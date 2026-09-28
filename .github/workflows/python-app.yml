@@ -128,36 +128,21 @@ jobs:
 
       # 필수 환경변수는 더미 값, RSA 키는 이 실행에서만 쓰는 일회용이다.
       # TestConfig 가 DB(sqlite 메모리)·키 경로(/tmp/dummy.pem)를 덮어쓴다.
-      # idp/tests/known_failures.txt 의 기존 실패는 빼고, 나머지는 전부 통과해야 한다.
       - name: Run pytest
         run: |
           openssl genrsa -out /tmp/idp-test.pem 2048
           chmod 644 /tmp/idp-test.pem
-          deselect=$(grep -v -E '^\s*(#|$)' idp/tests/known_failures.txt | sed 's/^/--deselect /' | tr '\n' ' ')
-          run() {
-            docker run --rm \
-              -v "$PWD/idp/tests:/workspace/tests:ro" \
-              -v /tmp/idp-test.pem:/tmp/dummy.pem:ro \
-              -e IDP_DATABASE_URI=sqlite:///:memory: \
-              -e IDP_SECRET_KEY=ci-only \
-              -e IDP_MWM_CLIENT_ID=ci -e IDP_MWM_CLIENT_SECRET=ci \
-              -e IDP_MWM_REDIRECT_URI=http://localhost/callback \
-              -e OIDC_ISSUER=http://localhost \
-              -e IDP_RSA_PRIVATE_KEY=/tmp/dummy.pem \
-              -e SYNC_MWM_DB_URI=sqlite:///:memory: \
-              mwm-idp-test python -m pytest -p no:cacheprovider "$@"
-          }
-          # shellcheck disable=SC2086
-          run -q tests $deselect
-
-          # 기존 실패 목록 중 통과하게 된 것이 있으면 알려준다 (목록에서 지우라는 뜻)
-          grep -v -E '^\s*(#|$)' idp/tests/known_failures.txt > /tmp/known.txt
-          # shellcheck disable=SC2046
-          run -q -rp $(cat /tmp/known.txt) > /tmp/known.log 2>&1 || true
-          fixed=$(grep '^PASSED ' /tmp/known.log | sed 's/^PASSED //' || true)
-          if [ -n "$fixed" ]; then
-            echo "::notice::기존 실패가 통과합니다. idp/tests/known_failures.txt 에서 지우십시오: $(echo $fixed)"
-          fi
+          docker run --rm \
+            -v "$PWD/idp/tests:/workspace/tests:ro" \
+            -v /tmp/idp-test.pem:/tmp/dummy.pem:ro \
+            -e IDP_DATABASE_URI=sqlite:///:memory: \
+            -e IDP_SECRET_KEY=ci-only \
+            -e IDP_MWM_CLIENT_ID=ci -e IDP_MWM_CLIENT_SECRET=ci \
+            -e IDP_MWM_REDIRECT_URI=http://localhost/callback \
+            -e OIDC_ISSUER=http://localhost \
+            -e IDP_RSA_PRIVATE_KEY=/tmp/dummy.pem \
+            -e SYNC_MWM_DB_URI=sqlite:///:memory: \
+            mwm-idp-test python -m pytest -q -p no:cacheprovider tests
 
   test:
     name: Test (Docker)

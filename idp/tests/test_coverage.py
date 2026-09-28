@@ -340,7 +340,7 @@ class TestOAuthRepoEdgeCases:
 
 
 class TestSyncAPIConnectionError:
-    def test_sync_api_connection_error(self, client, db):
+    def test_sync_api_connection_error(self, client, db, api_headers):
         bad_config = {
             "bad": {
                 "description": "Bad",
@@ -353,5 +353,5 @@ class TestSyncAPIConnectionError:
         }
         with patch.object(SyncService, 'get_sync_sources',
                           return_value=bad_config):
-            resp = client.post("/api/sync/bad")
+            resp = client.post("/api/sync/bad", headers=api_headers)
             assert resp.status_code == 502

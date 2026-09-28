@@ -254,12 +254,12 @@ class TestSyncService:
 
 
 class TestSyncAPI:
-    def test_sync_api_invalid_source(self, client, db):
-        resp = client.post("/api/sync/nonexistent")
+    def test_sync_api_invalid_source(self, client, db, api_headers):
+        resp = client.post("/api/sync/nonexistent", headers=api_headers)
         assert resp.status_code == 404
 
-    def test_sync_status(self, client, db):
-        resp = client.get("/api/sync/status")
+    def test_sync_status(self, client, db, api_headers):
+        resp = client.get("/api/sync/status", headers=api_headers)
         assert resp.status_code == 200
         data = resp.get_json()
         assert "available_sources" in data

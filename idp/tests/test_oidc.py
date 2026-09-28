@@ -3,13 +3,14 @@ import jwt
 import json
 from app.services.oidc_service import OIDCService
 
-def test_oidc_discovery(client):
+def test_oidc_discovery(app, client):
     """OIDC Discovery 엔드포인트가 올바른 메타데이터를 반환하는지 테스트"""
     response = client.get("/.well-known/openid-configuration")
     assert response.status_code == 200
     data = response.get_json()
     
-    assert data["issuer"].rstrip("/") == "http://localhost:5000"
+    # issuer 는 설정(OIDC_ISSUER)에서 온다 — 기본값 :5000 이 아니라 설정값이어야 한다
+    assert data["issuer"].rstrip("/") == app.config["OIDC_ISSUER"].rstrip("/")
     assert "/oauth/authorize" in data["authorization_endpoint"]
     assert "/oauth/token" in data["token_endpoint"]
     assert "/oauth/jwks" in data["jwks_uri"]
@@ -33,7 +34,7 @@ def test_oidc_jwks(client):
     assert "e" in key
     assert key["kid"] == "mwm-idp-key-1"
 
-def test_id_token_generation_in_token_exchange(client, db, sample_user, sample_oauth_client):
+def test_id_token_generation_in_token_exchange(app, client, db, sample_user, sample_oauth_client):
     """Authorization Code 교환 시 id_token이 포함되는지 테스트 (OIDC)"""
     from app.repositories.oauth_repo import OAuthRepository
     repo = OAuthRepository()
@@ -68,7 +69,7 @@ def test_id_token_generation_in_token_exchange(client, db, sample_user, sample_o
     # Note: decode 시 options={"verify_signature": False} 로 페이로드만 확인 가능
     payload = jwt.decode(id_token, options={"verify_signature": False})
     
-    assert payload["iss"] == "http://localhost:5000"
+    assert payload["iss"] == app.config["OIDC_ISSUER"]
     assert payload["sub"] == sample_user.username
     assert payload["aud"] == sample_oauth_client.client_id
     assert payload["nonce"] == nonce

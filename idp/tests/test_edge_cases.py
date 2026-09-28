@@ -202,7 +202,7 @@ class TestRouteAuthorizeException:
 class TestApiSyncConnectionError:
     """api.py line 120: sync connection error returns 502"""
 
-    def test_sync_api_502(self, client, db):
+    def test_sync_api_502(self, client, db, api_headers):
         with patch.object(
             SyncService, 'sync_users',
             side_effect=ConnectionError("Cannot connect")
@@ -211,7 +211,7 @@ class TestApiSyncConnectionError:
                 SyncService, 'get_sync_sources',
                 return_value={"src": {}}
             ):
-                resp = client.post("/api/sync/src")
+                resp = client.post("/api/sync/src", headers=api_headers)
                 assert resp.status_code == 502
 
 

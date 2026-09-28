@@ -23,7 +23,8 @@ def require_api_key(f):
             return jsonify({"error": "API Key is required"}), 401
             
         user = IdpUser.query.filter_by(api_key=api_key).first()
-        if not user:
+        # 비활성 사용자의 키는 없는 키와 똑같이 거절한다 (로그인과 같은 기준, 존재 여부를 드러내지 않는다)
+        if not user or not user.active:
             return jsonify({"error": "Invalid API Key"}), 401
             
         # 권한 체크: Admin 또는 PowerUser만 허용

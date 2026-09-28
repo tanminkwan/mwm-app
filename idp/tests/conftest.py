@@ -56,6 +56,20 @@ def sample_user(db):
 
 
 @pytest.fixture
+def api_headers(db):
+    """관리 API(/api/users·/api/clients·/api/sync) 호출용 헤더.
+
+    관리 API 는 API 키 + Admin/PowerUser 역할을 요구한다 (app/api.py 의 require_api_key).
+    """
+    from app.models import IdpUser
+    admin = IdpUser(username="api-admin", email="api-admin@example.com",
+                    active=True, roles=["Admin"], api_key="mwm_sk_test_admin")
+    db.session.add(admin)
+    db.session.commit()
+    return {"Authorization": "Bearer mwm_sk_test_admin"}
+
+
+@pytest.fixture
 def sample_oauth_client(db):
     """테스트용 OAuth2 Client 생성"""
     from app.models import OAuth2Client

@@ -38,7 +38,6 @@ idp/
 │   ├── services/         # 비즈니스 로직 및 동기화 전략 (SOLID: SRP/OCP)
 │   └── templates/        # UI 템플릿 (Admin Console 포함)
 ├── tests/                # pytest 기반 단위/통합 테스트 (이미지에 넣지 않고 마운트)
-│   └── known_failures.txt  # 원래부터 실패하던 테스트 — CI 가 빼고 돌린다
 ├── Dockerfile.idp        # IDP 운영 이미지 (mwm-idp)
 ├── Dockerfile.test       # mwm-idp + 테스트 도구 (mwm-idp-test, CI·개발 전용)
 ├── create_idp_db.sql     # IDP 전용 PostgreSQL 초기화 SQL
@@ -91,8 +90,9 @@ docker run --rm \
   mwm-idp-test python -m pytest -q -p no:cacheprovider tests
 ```
 
-- `tests/known_failures.txt` 의 26개는 원래부터 실패한다. CI(`idp-test` job)는 이것을 빼고
-  나머지가 **전부 통과해야** 한다. 고치면 목록에서 지운다.
+- CI(`idp-test` job)는 **전부 통과해야** 한다.
+- 관리 API(`/api/users`·`/api/clients`·`/api/sync`)를 부르는 테스트는 `api_headers` fixture 를 쓴다
+  (API 키 + Admin 역할). 인증 자체는 `tests/test_api_auth.py` 가 본다.
 - 의존성 취약점은 CI `audit` job 이 `pip-audit` 로 본 앱과 함께 검사한다.
 
 ## 🐳 Docker 배포 가이드

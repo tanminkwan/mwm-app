@@ -3,14 +3,14 @@ import json
 
 
 class TestListUsers:
-    def test_list_users_empty(self, client, db):
-        resp = client.get("/api/users")
+    def test_list_users_empty(self, client, db, api_headers):
+        resp = client.get("/api/users", headers=api_headers)
         assert resp.status_code == 200
         # default client의 초기화로 인한 빈 목록일 수 있음
         assert isinstance(resp.get_json(), list)
 
-    def test_list_users_with_data(self, client, db, sample_user):
-        resp = client.get("/api/users")
+    def test_list_users_with_data(self, client, db, sample_user, api_headers):
+        resp = client.get("/api/users", headers=api_headers)
         assert resp.status_code == 200
         data = resp.get_json()
         assert len(data) >= 1
@@ -19,8 +19,8 @@ class TestListUsers:
 
 
 class TestCreateUser:
-    def test_create_user_api(self, client, db):
-        resp = client.post("/api/users", json={
+    def test_create_user_api(self, client, db, api_headers):
+        resp = client.post("/api/users", headers=api_headers, json={
             "username": "apiuser",
             "email": "api@example.com",
             "password": "StrongPass123!",
@@ -32,32 +32,32 @@ class TestCreateUser:
         assert data["username"] == "apiuser"
         assert data["email"] == "api@example.com"
 
-    def test_create_user_duplicate_username(self, client, db, sample_user):
-        resp = client.post("/api/users", json={
+    def test_create_user_duplicate_username(self, client, db, sample_user, api_headers):
+        resp = client.post("/api/users", headers=api_headers, json={
             "username": "testuser",
             "email": "other@example.com",
         })
         assert resp.status_code == 409
 
-    def test_create_user_duplicate_email(self, client, db, sample_user):
-        resp = client.post("/api/users", json={
+    def test_create_user_duplicate_email(self, client, db, sample_user, api_headers):
+        resp = client.post("/api/users", headers=api_headers, json={
             "username": "other",
             "email": "test@example.com",
         })
         assert resp.status_code == 409
 
-    def test_create_user_validation_missing_fields(self, client, db):
-        resp = client.post("/api/users", json={"first_name": "Only"})
+    def test_create_user_validation_missing_fields(self, client, db, api_headers):
+        resp = client.post("/api/users", headers=api_headers, json={"first_name": "Only"})
         assert resp.status_code == 400
         assert "Missing required fields" in resp.get_json()["error"]
 
-    def test_create_user_no_json(self, client, db):
-        resp = client.post("/api/users", data="not json",
+    def test_create_user_no_json(self, client, db, api_headers):
+        resp = client.post("/api/users", headers=api_headers, data="not json",
                            content_type="text/plain")
         assert resp.status_code == 400
 
-    def test_create_user_short_password(self, client, db):
-        resp = client.post("/api/users", json={
+    def test_create_user_short_password(self, client, db, api_headers):
+        resp = client.post("/api/users", headers=api_headers, json={
             "username": "shortpw",
             "email": "short@example.com",
             "password": "123",
@@ -66,49 +66,49 @@ class TestCreateUser:
 
 
 class TestGetUser:
-    def test_get_user(self, client, db, sample_user):
-        resp = client.get(f"/api/users/{sample_user.id}")
+    def test_get_user(self, client, db, sample_user, api_headers):
+        resp = client.get(f"/api/users/{sample_user.id}", headers=api_headers)
         assert resp.status_code == 200
         assert resp.get_json()["username"] == "testuser"
 
-    def test_get_user_not_found(self, client, db):
-        resp = client.get("/api/users/99999")
+    def test_get_user_not_found(self, client, db, api_headers):
+        resp = client.get("/api/users/99999", headers=api_headers)
         assert resp.status_code == 404
 
 
 class TestUpdateUser:
-    def test_update_user(self, client, db, sample_user):
-        resp = client.put(f"/api/users/{sample_user.id}", json={
+    def test_update_user(self, client, db, sample_user, api_headers):
+        resp = client.put(f"/api/users/{sample_user.id}", headers=api_headers, json={
             "first_name": "Updated",
         })
         assert resp.status_code == 200
         assert resp.get_json()["first_name"] == "Updated"
 
-    def test_update_user_not_found(self, client, db):
-        resp = client.put("/api/users/99999", json={"first_name": "X"})
+    def test_update_user_not_found(self, client, db, api_headers):
+        resp = client.put("/api/users/99999", headers=api_headers, json={"first_name": "X"})
         assert resp.status_code == 404
 
-    def test_update_user_duplicate_username(self, client, db, sample_user):
+    def test_update_user_duplicate_username(self, client, db, sample_user, api_headers):
         # 다른 사용자 생성
-        client.post("/api/users", json={
+        client.post("/api/users", headers=api_headers, json={
             "username": "other", "email": "o@example.com",
         })
-        resp = client.put(f"/api/users/{sample_user.id}", json={
+        resp = client.put(f"/api/users/{sample_user.id}", headers=api_headers, json={
             "username": "other",
         })
         assert resp.status_code == 409
 
 
 class TestDeleteUser:
-    def test_delete_user(self, client, db, sample_user):
-        resp = client.delete(f"/api/users/{sample_user.id}")
+    def test_delete_user(self, client, db, sample_user, api_headers):
+        resp = client.delete(f"/api/users/{sample_user.id}", headers=api_headers)
         assert resp.status_code == 204
         # 비활성화 확인
-        resp2 = client.get(f"/api/users/{sample_user.id}")
+        resp2 = client.get(f"/api/users/{sample_user.id}", headers=api_headers)
         assert resp2.get_json()["active"] is False
 
-    def test_delete_user_not_found(self, client, db):
-        resp = client.delete("/api/users/99999")
+    def test_delete_user_not_found(self, client, db, api_headers):
+        resp = client.delete("/api/users/99999", headers=api_headers)
         assert resp.status_code == 404
 
 
