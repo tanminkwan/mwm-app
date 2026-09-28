@@ -55,13 +55,14 @@
 
 ### 이미지 빌드
 
-이미지는 4개이며, `mwm-test` 는 CI·개발 전용입니다.
+이미지는 5개이며, `mwm-test`·`mwm-idp-test` 는 CI·개발 전용입니다.
 
 ```bash
 docker build -t mwm-base -f Dockerfile.base .              # requirements.txt 설치 — 바뀔 때만
 docker build -t mwm-app  -f Dockerfile.app  .              # 소스 코드만 COPY
 docker build -t mwm-idp  -f idp/Dockerfile.idp idp         # IDP 서버
 docker build -t mwm-test -f Dockerfile.test .              # mwm-app + 테스트 도구 (CI·개발 전용)
+docker build -t mwm-idp-test -f idp/Dockerfile.test idp    # mwm-idp + 테스트 도구 (CI·개발 전용)
 ```
 
 > **`docker compose` 는 이미지를 빌드하지 않습니다.** 빌드는 위 명령으로만 하고, compose 는 만들어진 이미지를

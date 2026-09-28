@@ -22,6 +22,9 @@ def app():
 def db(app):
     """각 테스트마다 깨끗한 DB 상태 보장"""
     with app.app_context():
+        # create_app 이 기본 클라이언트를 이미 넣어 두었다. Flask-SQLAlchemy 3 은 sqlite 메모리 DB 를
+        # 모든 연결이 공유하므로(StaticPool), 비우고 시작해야 첫 테스트도 깨끗한 DB 를 받는다
+        _db.drop_all()
         _db.create_all()
         yield _db
         _db.session.remove()

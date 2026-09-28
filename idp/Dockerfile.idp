@@ -8,8 +8,8 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 
 # app 패키지를 /workspace/app/ 로 복사
+# tests/ 는 싣지 않는다 — 테스트는 Dockerfile.test 이미지에 마운트해서 돌린다
 COPY app/ /workspace/app/
-COPY tests/ /workspace/tests/
 
 # PYTHONPATH에 workspace 추가하여 `from app import ...` 가능하게
 ENV PYTHONPATH=/workspace

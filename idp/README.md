@@ -37,10 +37,13 @@ idp/
 │   ├── repositories/     # 데이터 접근 계층 (SOLID: DIP)
 │   ├── services/         # 비즈니스 로직 및 동기화 전략 (SOLID: SRP/OCP)
 │   └── templates/        # UI 템플릿 (Admin Console 포함)
-├── tests/                # pytest 기반 단위/통합 테스트 (Pytest-Mock)
-├── Dockerfile.idp        # IDP 전용 경량화 Docker 이미지 
+├── tests/                # pytest 기반 단위/통합 테스트 (이미지에 넣지 않고 마운트)
+│   └── known_failures.txt  # 원래부터 실패하던 테스트 — CI 가 빼고 돌린다
+├── Dockerfile.idp        # IDP 운영 이미지 (mwm-idp)
+├── Dockerfile.test       # mwm-idp + 테스트 도구 (mwm-idp-test, CI·개발 전용)
 ├── create_idp_db.sql     # IDP 전용 PostgreSQL 초기화 SQL
-└── requirements.txt      # Python 의존성 목록 (Authlib, Flask-Login 등)
+├── requirements.txt      # 운영 의존성 (Authlib, Flask-Login 등) — 전부 버전 고정
+└── requirements-dev.txt  # 테스트 도구 (운영 이미지에 싣지 않는다)
 ```
 
 ## 🛠️ 관리 포인트 (Admin Operations)
@@ -67,7 +70,30 @@ curl -k -X GET https://idp.mwm.local:20443/api/userinfo \
 1. **환경 변수 설정**: `IDP_DATABASE_URI`, `SYNC_MWM_DB_URI`, `IDP_RSA_PRIVATE_KEY` 등을 설정합니다.
 2. **패키지 설치**: `pip install -r requirements.txt`
 3. **서버 실행**: `export PYTHONPATH=. && python app/run.py`
-4. **테스트 수행**: `pytest tests/`
+4. **테스트 수행**: 아래 [테스트](#-테스트) 참고 (Docker)
+
+## 🧪 테스트
+
+테스트 러너는 운영 이미지(`mwm-idp`)에 없다. `mwm-idp-test` 에서 `tests/` 를 마운트해 돌린다.
+필수 환경변수는 더미 값이면 되고, RSA 키는 일회용으로 만들어 `/tmp/dummy.pem` 에 마운트한다
+(`app/config.py` 의 `TestConfig`). 저장소 루트에서:
+
+```bash
+docker build -t mwm-idp      -f idp/Dockerfile.idp  idp
+docker build -t mwm-idp-test -f idp/Dockerfile.test idp
+openssl genrsa -out /tmp/idp-test.pem 2048 && chmod 644 /tmp/idp-test.pem
+docker run --rm \
+  -v "$PWD/idp/tests:/workspace/tests:ro" -v /tmp/idp-test.pem:/tmp/dummy.pem:ro \
+  -e IDP_DATABASE_URI=sqlite:///:memory: -e IDP_SECRET_KEY=dev \
+  -e IDP_MWM_CLIENT_ID=dev -e IDP_MWM_CLIENT_SECRET=dev \
+  -e IDP_MWM_REDIRECT_URI=http://localhost/callback -e OIDC_ISSUER=http://localhost \
+  -e IDP_RSA_PRIVATE_KEY=/tmp/dummy.pem -e SYNC_MWM_DB_URI=sqlite:///:memory: \
+  mwm-idp-test python -m pytest -q -p no:cacheprovider tests
+```
+
+- `tests/known_failures.txt` 의 26개는 원래부터 실패한다. CI(`idp-test` job)는 이것을 빼고
+  나머지가 **전부 통과해야** 한다. 고치면 목록에서 지운다.
+- 의존성 취약점은 CI `audit` job 이 `pip-audit` 로 본 앱과 함께 검사한다.
 
 ## 🐳 Docker 배포 가이드
 전체 시스템(`mw_app`)의 루트 디렉터리에서 `docker-compose.yml`을 통해 관리됩니다. 소스 변경 시 반드시 재빌드 및 재시작이 필요합니다.

@@ -1,0 +1,13 @@
+# IdP 테스트 전용 이미지. **배포되지 않는다.**
+#
+# 운영 이미지(mwm-idp) 위에 테스트 도구만 얹는다 — 본 앱 Dockerfile.test 와 같은 구조다.
+# mwm-idp 를 그대로 FROM 하므로 테스트 대상은 배포 이미지 자체다.
+# 테스트 도구 설치가 앱 의존성 버전을 바꾸지 않았는지는 CI 가 pip freeze 로 검증한다.
+#
+# tests/ 는 이미지에 넣지 않는다. 실행할 때 /workspace/tests 로 마운트한다 (README 참조).
+
+FROM mwm-idp
+
+COPY requirements-dev.txt /tmp/requirements-dev.txt
+RUN pip install --no-cache-dir -r /tmp/requirements-dev.txt \
+ && rm /tmp/requirements-dev.txt
