@@ -4,6 +4,7 @@ from flask_appbuilder.api import BaseApi, expose, protect
 from app.sqls.batch import batch_function_registry
 import app.sqls.batch as batch_module
 import logging
+from app.api.errors import internal_error
 
 class BatchApi(BaseApi):
     resource_name = 'batch'
@@ -45,8 +46,7 @@ class BatchApi(BaseApi):
             status_code = 200 if rtn == 1 else 400
             return jsonify({"return_code": rtn, "message": msg}), status_code
 
-        except Exception as e:
-            logging.error(f"mwm BatchApi.run_function Error: {str(e)}")
-            return jsonify({"message": str(e)}), 500
+        except Exception:
+            return internal_error(f"mwm BatchApi.run_function Error: {function_name}")
 
 appbuilder.add_api(BatchApi)

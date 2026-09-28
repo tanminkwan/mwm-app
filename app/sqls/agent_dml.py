@@ -18,6 +18,7 @@ import re
 import csv
 from io import StringIO
 from sqlalchemy.dialects.postgresql import insert
+from app.api.errors import internal_error_message
 
 class AutorunResult:
 
@@ -987,8 +988,8 @@ class AutorunResult:
             
         try:
             jsonl_md = jsonl_to_markdown(content)
-        except Exception as e:
-            return -1, f"Markdown conversion failed: {str(e)}"
+        except Exception:
+            return -1, internal_error_message("Markdown conversion failed")
             
         # 파라미터 파싱
         file_val = ''

@@ -15,6 +15,7 @@ from email.mime.application import MIMEApplication
 from email.mime.image import MIMEImage
 from email.utils import COMMASPACE, formatdate, formataddr
 from email.header import Header
+from app.log_safe import log_safe
 
 log = logging.getLogger(__name__)
 
@@ -114,7 +115,7 @@ def send_mail(host, port, sender, sender_name, receivers, subject, content,
         s.sendmail(sender, all_recipients, msg.as_string())
         s.quit()
 
-        log.info(f"Email sent successfully: subject='{subject}', to={receivers}")
+        log.info(f"Email sent successfully: subject='{log_safe(subject)}', to={log_safe(receivers)}")
         return True, 'OK'
 
     except Exception as e:

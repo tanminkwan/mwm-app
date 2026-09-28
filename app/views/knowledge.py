@@ -24,6 +24,7 @@ import base64
 import requests
 import requests
 import logging
+from app.api.errors import internal_error
 
 log = logging.getLogger(__name__)
 
@@ -488,9 +489,9 @@ class UtApi(BaseApi):
                 download_url='/common/download/' + s3_filename
             ), 200
 
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            return jsonify(error=str(e)), 500
+            return internal_error('knowledge request failed', key='error')
 
     @expose('/email_tags', methods=['GET'])
     @has_access
@@ -532,9 +533,8 @@ class UtApi(BaseApi):
                     , username=con_val.get('SMTP_USERNAME')
                     , password=con_val.get('SMTP_PASSWORD'))
             return jsonify(success=True, message=f'{len(emails)}명에게 발송 완료', emails=emails)
-        except Exception as e:
-            log.error(f"Email send failed: {e}")
-            return jsonify(error=str(e)), 500
+        except Exception:
+            return internal_error('Email send failed', key='error')
 
     @expose('/mdcontent/<int:content_id>/send_email', methods=['POST'])
     @has_access
@@ -564,9 +564,8 @@ class UtApi(BaseApi):
                     , password=con_val.get('SMTP_PASSWORD')
                     , inline_images=inline_images)
             return jsonify(success=True, message=f'{len(emails)}명에게 발송 완료', emails=emails)
-        except Exception as e:
-            log.error(f"Email send failed: {e}")
-            return jsonify(error=str(e)), 500
+        except Exception:
+            return internal_error('Email send failed', key='error')
 
 #appbuilder.add_separator("Server")
 appbuilder.add_separator("Server")

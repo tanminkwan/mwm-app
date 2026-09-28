@@ -5,6 +5,8 @@ from abc import ABC, abstractmethod
 from flask import current_app
 from sqlalchemy import create_engine, text
 from app.models import db
+from app.errors import internal_error_message
+from app.log_safe import log_safe
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +81,13 @@ def get_role_strategy(strategy_type):
 
 # ── 동기화 서비스 ──
 
+def _row_error(e, source_name, sync_id):
+    """행 하나의 동기화 실패 문구. 우리가 만든 충돌 메시지(ValueError)는 그대로, 나머지는 숨긴다."""
+    if isinstance(e, ValueError):
+        return str(e)
+    return internal_error_message(f"Sync error for {source_name}/{sync_id}")
+
+
 class SyncService:
     """범용 외부 DB 동기화 서비스. Repository를 주입받아 사용 (SOLID-DIP)."""
 
@@ -99,8 +108,10 @@ class SyncService:
 
         try:
             engine = create_engine(config["db_uri"])
-        except Exception as e:
-            raise ConnectionError(f"Failed to connect to source DB: {e}")
+        except Exception:
+            # 오류 원문에는 원본 DB 의 호스트·사용자가 들어 있다 — 로그에만 남긴다
+            raise ConnectionError(
+                f"Failed to connect to source DB: {internal_error_message(f'sync {source_name}: connect')}") from None
 
         # 외부 사용자 조회
         col_mapping = config["column_mapping"]
@@ -116,8 +127,9 @@ class SyncService:
             with engine.connect() as conn:
                 rows = conn.execute(text(sql)).fetchall()
                 columns = [id_column] + source_columns
-        except Exception as e:
-            raise ConnectionError(f"Failed to query source: {e}")
+        except Exception:
+            raise ConnectionError(
+                f"Failed to query source: {internal_error_message(f'sync {source_name}: query')}") from None
 
         # Role 전략 결정
         role_strategy = None
@@ -186,12 +198,11 @@ class SyncService:
                             self.user_repo.update(existing, **mapped)
                             result["updated"] += 1
                         else:
-                            result["errors"].append(f"sync_id={sync_id}: {str(e)}")
+                            result["errors"].append(f"sync_id={sync_id}: {_row_error(e, source_name, sync_id)}")
                             continue
 
             except Exception as e:
-                result["errors"].append(f"sync_id={sync_id}: {str(e)}")
-                logger.error(f"Sync error for {source_name}/{sync_id}: {e}")
+                result["errors"].append(f"sync_id={sync_id}: {_row_error(e, source_name, sync_id)}")
 
         # 외부에서 삭제된 사용자 비활성화
         existing_synced = self.user_repo.get_synced_users(source_name)
@@ -202,7 +213,7 @@ class SyncService:
 
         self.user_repo.commit()
         logger.info(
-            f"Sync '{source_name}' complete: "
+            f"Sync '{log_safe(source_name)}' complete: "
             f"created={result['created']}, updated={result['updated']}, "
             f"deactivated={result['deactivated']}, errors={len(result['errors'])}"
         )

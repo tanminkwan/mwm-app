@@ -2,6 +2,7 @@
 import logging
 
 from flask import current_app
+from app.log_safe import log_safe
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +52,7 @@ class UserService:
             sync_id=sync_id,
         )
         self.user_repo.commit()
-        logger.info(f"User created: {username}")
+        logger.info(f"User created: {log_safe(username)}")
         return user
 
     def update_user(self, user_id, **kwargs):

@@ -15,6 +15,8 @@ from app.sqls.monitor import select_row
 from app.sqls.knowledge import insert_tag
 
 import re
+from app.api.errors import internal_error_message
+from app.log_safe import log_safe
 
 # JVM 힙 크기 접미사 → 바이트 배수. 접미사가 없으면 값 자체가 바이트다.
 _HEAP_UNITS_IN_BYTES = {
@@ -112,7 +114,7 @@ class JeusDomain(ABC):
 
         if self.landscape is None:
             error_msg = f"Host '{self.host_id}' not found in MwServer. Please register the server first."
-            logging.error(f"mwm upsertJeusDomain Error: {error_msg}")
+            logging.error(f"mwm upsertJeusDomain Error: {log_safe(error_msg)}")
             return -10, error_msg
 
         try:
@@ -221,10 +223,9 @@ class JeusDomain(ABC):
 
             return 1, 'OK'
 
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            logging.error(f"mwm upsertJeusDomain Exception: {str(e)}")
-            return -1, str(e)
+            return -1, internal_error_message("mwm upsertJeusDomain Exception")
 
     def __getDictOfWas(self, domain):
 

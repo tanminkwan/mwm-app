@@ -11,6 +11,7 @@ from app.sqls.agent_dml import AutorunResult
 import json
 import difflib
 from datetime import datetime
+from app.api.errors import is_internal_error
 
 class MwServerApi(BaseApi):
     resource_name = 'mw_server'
@@ -41,7 +42,7 @@ class MwServerApi(BaseApi):
 
         server, msg = add_server(data)
         if not server:
-            return jsonify({'message': msg}), 400 if msg != "Internal Server Error" else 500
+            return jsonify({'message': msg}), 500 if is_internal_error(msg) else 400
             
         return jsonify({'message': 'Created', 'id': server.id, 'host_id': server.host_id}), 201
 
@@ -56,7 +57,7 @@ class MwServerApi(BaseApi):
 
         server, msg = update_server(host_id, data)
         if not server:
-            return jsonify({'message': msg}), 404 if "not found" in msg else 400
+            return jsonify({'message': msg}), 500 if is_internal_error(msg) else 404 if "not found" in msg else 400
             
         return jsonify({'message': 'Updated', 'host_id': host_id}), 200
 

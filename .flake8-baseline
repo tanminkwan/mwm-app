@@ -5,4 +5,4 @@
 #
 # 측정 명령 (설정은 .flake8 에서 읽는다):
 #   flake8 . --count --exit-zero --statistics -q -q
-9297
+9294

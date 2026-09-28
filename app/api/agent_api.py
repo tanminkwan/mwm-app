@@ -25,6 +25,7 @@ from app.models.agent import AgCommandMaster, AgAgent, AgAgentGroup, AgCommandTy
 from app.models.common import PeriodicTypeEnum, YnEnum, TargetToSendEnum, get_uuid
 from app.models.was import MwWasInstance
 from app.models.knowledge import UtTag
+from app.log_safe import log_safe
 
 class CommandApi(BaseApi):
 
@@ -166,7 +167,7 @@ class CommandApi(BaseApi):
                 db.session.commit()
             else:
                 command_id = data.get('command_id')
-                logging.error(f'call_autorun_func [command_id:{command_id}][msg:{msg}]')
+                logging.error(f'call_autorun_func [command_id:{log_safe(command_id)}][msg:{log_safe(msg)}]')
                 db.session.rollback()
 
         return jsonify({'return_code':1, 'message':'OK'}), 200
@@ -242,7 +243,7 @@ INVALID_JSON_ESCAPE = re.compile(r'\\(?!["\\/bfnrtu])')
 
 
 def parse_json_text(raw_text):
-    """Text 컬럼 값이 JSON 이면 파싱해서, 아니면 원본 문자열 그대로 반환한다.
+    r"""Text 컬럼 값이 JSON 이면 파싱해서, 아니면 원본 문자열 그대로 반환한다.
 
     ag_result.result_text 와 ag_command_detail.additional_params 에 함께 쓴다.
     두 컬럼 모두 Text 라 여러 형태가 섞여 들어온다.

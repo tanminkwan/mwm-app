@@ -18,6 +18,7 @@ from app.models.itam import (
     ItItamWasCompare, ItItamWebCompare,
     ItLeebalsoWasCompare, ItLeebalsoWebCompare
 )
+from app.api.errors import internal_error
 
 log = logging.getLogger(__name__)
 
@@ -36,9 +37,8 @@ class ItamCompareApi(BaseApi):
                 'message': 'ITAM 대사 완료',
                 'summary': summary
             }), 200
-        except Exception as e:
-            log.error(f"일괄 대사 실행 오류: {str(e)}")
-            return jsonify({'message': f'대사 실행 중 오류 발생: {str(e)}'}), 500
+        except Exception:
+            return internal_error("일괄 대사 실행 오류")
 
     @expose('/itam-was/<config_id>', methods=['POST'])
     @has_access
@@ -50,8 +50,8 @@ class ItamCompareApi(BaseApi):
                 'message': f'ITAM WAS 대사 완료 (config_id={config_id})',
                 'error_count': count
             }), 200
-        except Exception as e:
-            return jsonify({'message': f'대사 실행 중 오류 발생: {str(e)}'}), 500
+        except Exception:
+            return internal_error('ITAM 대사 실행 오류: compare_itam_was_single')
 
     @expose('/itam-web/<config_id>', methods=['POST'])
     @has_access
@@ -63,8 +63,8 @@ class ItamCompareApi(BaseApi):
                 'message': f'ITAM WEB 대사 완료 (config_id={config_id})',
                 'error_count': count
             }), 200
-        except Exception as e:
-            return jsonify({'message': f'대사 실행 중 오류 발생: {str(e)}'}), 500
+        except Exception:
+            return internal_error('ITAM 대사 실행 오류: compare_itam_web_single')
 
     @expose('/leebalso-was/<int:id>', methods=['POST'])
     @has_access
@@ -76,8 +76,8 @@ class ItamCompareApi(BaseApi):
                 'message': f'미들웨어관리소 WAS 대사 완료 (id={id})',
                 'error_count': count
             }), 200
-        except Exception as e:
-            return jsonify({'message': f'대사 실행 중 오류 발생: {str(e)}'}), 500
+        except Exception:
+            return internal_error('ITAM 대사 실행 오류: compare_leebalso_was_single')
 
     @expose('/leebalso-web/<int:id>', methods=['POST'])
     @has_access
@@ -89,8 +89,8 @@ class ItamCompareApi(BaseApi):
                 'message': f'미들웨어관리소 WEB 대사 완료 (id={id})',
                 'error_count': count
             }), 200
-        except Exception as e:
-            return jsonify({'message': f'대사 실행 중 오류 발생: {str(e)}'}), 500
+        except Exception:
+            return internal_error('ITAM 대사 실행 오류: compare_leebalso_web_single')
 
     @expose('/results/itam-was', methods=['GET'])
     @has_access

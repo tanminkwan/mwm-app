@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 import logging
 from datetime import datetime
 from flask import g
+from app.api.errors import internal_error_message
 
 def get_servers(host_id=None):
     """Retrieve one or all servers"""
@@ -28,10 +29,9 @@ def add_server(data):
         db.session.add(server)
         db.session.commit()
         return server, "OK"
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        logging.error(f"mwm add_server Error: {str(e)}")
-        return None, str(e)
+        return None, internal_error_message("mwm add_server Error")
 
 def update_server(host_id, data):
     """Update an existing server record"""
@@ -43,10 +43,9 @@ def update_server(host_id, data):
         _update_server_fields(server, data)
         db.session.commit()
         return server, "OK"
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        logging.error(f"mwm update_server Error: {str(e)}")
-        return None, str(e)
+        return None, internal_error_message("mwm update_server Error")
 
 def delete_server(host_id):
     """Delete a server record"""
@@ -58,10 +57,9 @@ def delete_server(host_id):
         db.session.delete(server)
         db.session.commit()
         return True, "OK"
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        logging.error(f"mwm delete_server Error: {str(e)}")
-        return False, str(e)
+        return False, internal_error_message("mwm delete_server Error")
 
 def _update_server_fields(server, data):
     """Internal helper to set fields from dict, handling Enums"""

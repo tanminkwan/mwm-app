@@ -46,6 +46,7 @@ class CommonApi(BaseApi):
         return jsonify(token=token), 200
 
 from flask_appbuilder.api import BaseApi, expose, protect
+from app.api.errors import internal_error
 
 class EmailApi(BaseApi):
     resource_name = 'email'
@@ -125,7 +126,7 @@ class EmailApi(BaseApi):
         if success:
             return jsonify({"message": "Email sent successfully"}), 200
         else:
-            return jsonify({"error": message}), 500
+            return internal_error('Email send failed', key='error', detail=message)
 
     @expose('/send_markdown', methods=['POST'])
     @protect()
@@ -206,7 +207,7 @@ class EmailApi(BaseApi):
         if success:
             return jsonify({"message": "Email sent successfully"}), 200
         else:
-            return jsonify({"error": message}), 500
+            return internal_error('Email send failed', key='error', detail=message)
 
 class MarkdownApi(BaseApi):
     resource_name = 'markdown'
@@ -257,8 +258,8 @@ class MarkdownApi(BaseApi):
             kroki_url = current_app.config.get('KROKI_URL', 'http://mwm-kroki:8000').rstrip('/')
             inlined_html, _ = convert_md_to_html(content_md, kroki_url)
             return jsonify({"html": inlined_html}), 200
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+        except Exception:
+            return internal_error('Markdown to_html failed', key='error')
 
 appbuilder.add_api(CommonApi)
 appbuilder.add_api(EmailApi)

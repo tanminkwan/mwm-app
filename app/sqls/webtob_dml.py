@@ -14,6 +14,8 @@ from app.models.was import MwServer, MwWas, MwWasInstance, MwWeb, MwWebVhost, Mw
     , MwWebDomain, MwWebSsl
 from app.sqls.was import get_landscape
 from .relationship import update_was_web_relation, get_web_servers
+from app.api.errors import internal_error_message
+from app.log_safe import log_safe
 
 class WebtobHttpm(ABC):
 
@@ -71,7 +73,7 @@ class WebtobHttpm(ABC):
 
         if self.landscape is None:
             error_msg = f"Host '{self.host_id}' not found in MwServer. Please register the server first."
-            logging.error(f"mwm upsertWebtobHttpm Error: {error_msg}")
+            logging.error(f"mwm upsertWebtobHttpm Error: {log_safe(error_msg)}")
             return -10, error_msg
 
         try:
@@ -205,10 +207,9 @@ class WebtobHttpm(ABC):
 
             return 1, 'OK'
 
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            logging.error(f"mwm upsertWebtobHttpm Exception: {str(e)}")
-            return -1, str(e)
+            return -1, internal_error_message("mwm upsertWebtobHttpm Exception")
 
     def __getDictOfWeb(self):
 

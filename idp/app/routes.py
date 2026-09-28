@@ -1,5 +1,5 @@
 """OAuth2 인증 라우트. SOLID-SRP: HTTP 요청/응답 처리만 담당."""
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlsplit
 
 from flask import (
     Blueprint, render_template, request, redirect, session, url_for, flash,
@@ -7,6 +7,7 @@ from flask import (
 )
 from flask_login import current_user, login_user, logout_user, login_required
 
+from app.errors import internal_error_message
 from app.models import db, OAuth2Client
 from app.repositories.user_repo import UserRepository
 from app.repositories.oauth_repo import OAuthRepository
@@ -38,13 +39,26 @@ def index():
     )
 
 
+def _safe_next(url):
+    """로그인 뒤 이동할 곳 — 이 서버 안의 경로만. 아니면 None (CodeQL py/url-redirection).
+
+    `https://evil`, `//evil`, `/\\evil`(브라우저는 \\ 를 / 로 읽는다), `javascript:` 를 막는다.
+    """
+    if not url or "\\" in url:
+        return None
+    parts = urlsplit(url)
+    if parts.scheme or parts.netloc or not url.startswith("/") or url.startswith("//"):
+        return None
+    return url
+
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:
         return redirect(url_for("auth.index"))
 
     user_service, _, _, _ = _get_services()
-    next_url = request.args.get("next") or url_for("auth.index")
+    next_url = _safe_next(request.args.get("next")) or url_for("auth.index")
 
     if request.method == "POST":
         username = request.form.get("username", "")
@@ -167,7 +181,9 @@ def authorize():
             nonce=nonce,
         )
     except Exception as e:
-        return render_template("login.html", error=str(e),
+        # 검증 실패(ValueError)는 우리 메시지 그대로, 그 밖의 예외는 로그에만 (CodeQL py/stack-trace-exposure)
+        error = str(e) if isinstance(e, ValueError) else internal_error_message("authorize failed")
+        return render_template("login.html", error=error,
                                client_id=client_id,
                                redirect_uri=redirect_uri,
                                app_title=current_app.config.get("APP_TITLE", "MWM IDP"),
@@ -349,19 +365,16 @@ def logout():
         # (별도 필드가 없으므로 기존 redirect_uris 목록을 활용)
         from app.models import OAuth2Client
         clients = OAuth2Client.query.all()
-        is_valid_uri = False
-        for client in clients:
-            if client.check_redirect_uri(post_logout_redirect_uri):
-                is_valid_uri = True
-                break
-        
-        if is_valid_uri:
+        # 등록된 redirect URI 와 정확히 같을 때만 보낸다. 보내는 값도 **등록된 쪽**이다 (입력값이 아니라)
+        registered = next((uri for client in clients for uri in client.get_redirect_uris()
+                           if uri == post_logout_redirect_uri), None)
+
+        if registered:
             params = {}
             if state:
                 params["state"] = state
-            
-            from urllib.parse import urlencode
-            target_url = post_logout_redirect_uri
+
+            target_url = registered
             if params:
                 sep = "&" if "?" in target_url else "?"
                 target_url += f"{sep}{urlencode(params)}"

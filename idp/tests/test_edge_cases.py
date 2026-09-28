@@ -176,7 +176,9 @@ class TestSyncRowLevelException:
                         result = service.sync_users("err_source")
 
                 assert len(result["errors"]) >= 1
-                assert "DB error" in result["errors"][0]
+                # 내부 예외 문구는 결과에 싣지 않는다 — 참조 ID 만 (test_internal_error_messages.py)
+                assert "DB error" not in result["errors"][0]
+                assert "(ref: " in result["errors"][0]
         finally:
             os.unlink(db_path)
 

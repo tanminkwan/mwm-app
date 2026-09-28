@@ -2,6 +2,7 @@
 import logging
 
 from flask import current_app
+from app.log_safe import log_safe
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +175,7 @@ class OAuthService:
             policy_mapping=policy_mapping or {}
         )
         self.oauth_repo.commit()
-        logger.info(f"New OAuth2 client created: {client_id}")
+        logger.info(f"New OAuth2 client created: {log_safe(client_id)}")
         return client
 
     def update_client(self, client_id_pk, **kwargs):
