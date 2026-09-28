@@ -3,6 +3,8 @@ FROM python:3.12.4-slim-bookworm
 WORKDIR /workspace
 
 COPY requirements.txt requirements.txt
+# 빌드 도구 자체의 취약점도 막는다 (pip·setuptools·wheel, pip-audit 기준 — 본 앱 Dockerfile.base 와 같다)
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 
 # app 패키지를 /workspace/app/ 로 복사

@@ -29,12 +29,13 @@ class TestUserServiceAuth:
             assert user is None
 
     def test_authenticate_inactive_user(self, app, db, sample_user):
-        with app.app_context():
-            sample_user.active = False
-            db.session.commit()
-            service = UserService(UserRepository())
-            user = service.authenticate("testuser", "TestPass123!")
-            assert user is None
+        # 앱 컨텍스트를 새로 열지 않는다 — Flask-SQLAlchemy 3 은 컨텍스트마다 세션이 따로라
+        # fixture 가 만든 sample_user 의 변경이 새 세션에 보이지 않는다
+        sample_user.active = False
+        db.session.commit()
+        service = UserService(UserRepository())
+        user = service.authenticate("testuser", "TestPass123!")
+        assert user is None
 
 
 class TestUserServiceCRUD:
@@ -78,13 +79,13 @@ class TestUserServiceCRUD:
                 service.get_user(99999)
 
     def test_list_users_active_only(self, app, db, sample_user):
-        with app.app_context():
-            service = UserService(UserRepository())
-            sample_user.active = False
-            db.session.commit()
-            users = service.list_users(active_only=True)
-            usernames = [u.username for u in users]
-            assert "testuser" not in usernames
+        # fixture 의 컨텍스트(세션)를 그대로 쓴다 — test_authenticate_inactive_user 참조
+        service = UserService(UserRepository())
+        sample_user.active = False
+        db.session.commit()
+        users = service.list_users(active_only=True)
+        usernames = [u.username for u in users]
+        assert "testuser" not in usernames
 
 
 class TestOAuthServiceEdgeCases:
