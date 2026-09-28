@@ -50,7 +50,7 @@ class TestIdpUser:
         )
         db.session.add(user)
         db.session.commit()
-        fetched = IdpUser.query.get(user.id)
+        fetched = db.session.get(IdpUser, user.id)
         assert fetched.roles == ["Admin", "mw_rgroup"]
 
     def test_sync_fields(self, db):
@@ -158,3 +158,12 @@ class TestOAuth2Token:
 
     def test_repr(self, db, access_token):
         assert "..." in repr(access_token)
+
+
+def test_utcnow_default_is_naive_utc():
+    # 컬럼이 tz 없는 DateTime 이다. datetime.utcnow() 를 대체하면서 값의 의미(tz 없는 UTC)는 그대로여야 한다
+    from datetime import datetime, timezone
+    from app.models import _utcnow
+    now = _utcnow()
+    assert now.tzinfo is None
+    assert abs((datetime.now(timezone.utc).replace(tzinfo=None) - now).total_seconds()) < 5

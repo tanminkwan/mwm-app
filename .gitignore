@@ -47,6 +47,7 @@ nosetests.xml
 coverage.xml
 coverage.json
 coverage-out/
+idp-coverage-out/
 *.cover
 *.py,cover
 .hypothesis/

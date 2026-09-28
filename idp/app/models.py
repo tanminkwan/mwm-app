@@ -1,5 +1,5 @@
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
@@ -7,6 +7,15 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, JSON
 
 db = SQLAlchemy()
+
+
+def _utcnow():
+    """현재 UTC 시각 (tzinfo 없음).
+
+    datetime.utcnow() 는 Python 3.12 에서 사용 중단됐다. 컬럼이 tz 없는 DateTime 이라
+    값은 예전과 똑같이 tz 없는 UTC 로 둔다 — tz 있는 값을 섞으면 비교가 TypeError 로 깨진다.
+    """
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class IdpUser(db.Model, UserMixin):
@@ -24,9 +33,9 @@ class IdpUser(db.Model, UserMixin):
     sync_source = Column(String(50), nullable=True)
     sync_id = Column(String(100), nullable=True)
     api_key = Column(String(128), unique=True, nullable=True, index=True) # API authentication key
-    created_on = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_on = Column(DateTime, default=_utcnow, nullable=False)
     updated_on = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime, default=_utcnow, onupdate=_utcnow, nullable=False
     )
 
     @property
@@ -73,7 +82,7 @@ class OAuth2Client(db.Model):
     grant_types = Column(String(200), nullable=False, default="authorization_code")
     scope = Column(String(200), nullable=False, default="openid profile email")
     policy_mapping = Column(JSON, default=dict) # Role mapping for specific services (e.g., Minio)
-    created_on = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_on = Column(DateTime, default=_utcnow, nullable=False)
 
     def get_redirect_uris(self):
         return self.redirect_uris.split() if self.redirect_uris else []

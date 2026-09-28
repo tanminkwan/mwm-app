@@ -40,6 +40,8 @@ idp/
 ├── tests/                # pytest 기반 단위/통합 테스트 (이미지에 넣지 않고 마운트)
 ├── Dockerfile.idp        # IDP 운영 이미지 (mwm-idp)
 ├── Dockerfile.test       # mwm-idp + 테스트 도구 (mwm-idp-test, CI·개발 전용)
+├── pytest.ini            # 테스트 관문 (strict, 새 DeprecationWarning 실패)
+├── .coveragerc / .coverage-baseline  # 커버리지 측정 설정 / CI 하한
 ├── create_idp_db.sql     # IDP 전용 PostgreSQL 초기화 SQL
 ├── requirements.txt      # 운영 의존성 (Authlib, Flask-Login 등) — 전부 버전 고정
 └── requirements-dev.txt  # 테스트 도구 (운영 이미지에 싣지 않는다)
@@ -82,7 +84,8 @@ docker build -t mwm-idp      -f idp/Dockerfile.idp  idp
 docker build -t mwm-idp-test -f idp/Dockerfile.test idp
 openssl genrsa -out /tmp/idp-test.pem 2048 && chmod 644 /tmp/idp-test.pem
 docker run --rm \
-  -v "$PWD/idp/tests:/workspace/tests:ro" -v /tmp/idp-test.pem:/tmp/dummy.pem:ro \
+  -v "$PWD/idp/tests:/workspace/tests:ro" -v "$PWD/idp/pytest.ini:/workspace/pytest.ini:ro" \
+  -v /tmp/idp-test.pem:/tmp/dummy.pem:ro \
   -e IDP_DATABASE_URI=sqlite:///:memory: -e IDP_SECRET_KEY=dev \
   -e IDP_MWM_CLIENT_ID=dev -e IDP_MWM_CLIENT_SECRET=dev \
   -e IDP_MWM_REDIRECT_URI=http://localhost/callback -e OIDC_ISSUER=http://localhost \
@@ -90,7 +93,11 @@ docker run --rm \
   mwm-idp-test python -m pytest -q -p no:cacheprovider tests
 ```
 
-- CI(`idp-test` job)는 **전부 통과해야** 한다.
+- CI(`idp-test` job)는 **전부 통과해야** 한다. 관문은 본 앱과 같다:
+  - `pytest.ini` — **새로 생기는 `DeprecationWarning` 은 실패**, 등록하지 않은 marker 는 에러(`strict`)
+  - 커버리지 — `idp/.coverage-baseline` 아래로 떨어지면 실패. 재려면 `.coveragerc` 도 마운트하고 `--cov` 를 붙인다
+    (`-v "$PWD/idp/.coveragerc:/workspace/.coveragerc:ro"`)
+  - flake8 — 루트의 `lint` job 이 `idp/` 까지 함께 본다
 - 관리 API(`/api/users`·`/api/clients`·`/api/sync`)를 부르는 테스트는 `api_headers` fixture 를 쓴다
   (API 키 + Admin 역할). 인증 자체는 `tests/test_api_auth.py` 가 본다.
 - 의존성 취약점은 CI `audit` job 이 `pip-audit` 로 본 앱과 함께 검사한다.

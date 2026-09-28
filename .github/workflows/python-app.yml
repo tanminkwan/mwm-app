@@ -128,12 +128,17 @@ jobs:
 
       # 필수 환경변수는 더미 값, RSA 키는 이 실행에서만 쓰는 일회용이다.
       # TestConfig 가 DB(sqlite 메모리)·키 경로(/tmp/dummy.pem)를 덮어쓴다.
+      # 관문은 본 앱과 같다 (TASK 5-12): idp/pytest.ini(strict, 새 DeprecationWarning 실패) + 커버리지 게이트.
       - name: Run pytest
         run: |
           openssl genrsa -out /tmp/idp-test.pem 2048
           chmod 644 /tmp/idp-test.pem
+          mkdir -p idp-coverage-out && chmod 777 idp-coverage-out
           docker run --rm \
             -v "$PWD/idp/tests:/workspace/tests:ro" \
+            -v "$PWD/idp/pytest.ini:/workspace/pytest.ini:ro" \
+            -v "$PWD/idp/.coveragerc:/workspace/.coveragerc:ro" \
+            -v "$PWD/idp-coverage-out:/out" \
             -v /tmp/idp-test.pem:/tmp/dummy.pem:ro \
             -e IDP_DATABASE_URI=sqlite:///:memory: \
             -e IDP_SECRET_KEY=ci-only \
@@ -142,7 +147,14 @@ jobs:
             -e OIDC_ISSUER=http://localhost \
             -e IDP_RSA_PRIVATE_KEY=/tmp/dummy.pem \
             -e SYNC_MWM_DB_URI=sqlite:///:memory: \
-            mwm-idp-test python -m pytest -q -p no:cacheprovider tests
+            mwm-idp-test python -m pytest -v -p no:cacheprovider \
+              --cov --cov-report=term --cov-report=json:/out/coverage.json
+
+      - name: Coverage gate
+        if: always()
+        run: |
+          [ -f idp-coverage-out/coverage.json ] || { echo "커버리지 파일 없음 (테스트가 실패했다)"; exit 0; }
+          python3 .github/scripts/coverage_gate.py idp-coverage-out/coverage.json idp/.coverage-baseline "IdP 커버리지"
 
   test:
     name: Test (Docker)
@@ -240,42 +252,7 @@ jobs:
         if: always()
         run: |
           [ -f coverage-out/coverage.json ] || { echo "커버리지 파일 없음 (테스트가 실패했다)"; exit 0; }
-          python3 - <<'PY'
-          import json, os, re, sys
-
-          t = json.load(open('coverage-out/coverage.json'))['totals']
-          base = dict(
-              (k, float(v)) for k, v in
-              re.findall(r'^(\w+)\s*=\s*([\d.]+)$', open('.coverage-baseline').read(), re.M))
-
-          LABELS = {'percent_covered': '라인+분기', 'percent_branches_covered': '분기'}
-          rows, failed, improved = [], [], []
-          for key, label in LABELS.items():
-              now, want = t[key], base[key]
-              ok = now >= want
-              rows.append(f"| {label} | **{now:.2f}%** | {want:.2f}% | {'통과' if ok else '**미달**'} |")
-              (improved if now >= want + 0.30 else []).append(f'{key} = {now:.2f}')
-              if not ok:
-                  failed.append(f'{label}: {now:.2f}% < 기준선 {want:.2f}%')
-
-          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
-              print('### 커버리지', file=f)
-              print('\n| 지표 | 현재 | 기준선 | |', file=f)
-              print('| :--- | ---: | ---: | :-- |', file=f)
-              for r in rows:
-                  print(r, file=f)
-              print(f"\n라인만 {t['percent_statements_covered']:.2f}% "
-                    f"(참고 — import 만으로 38% 가 채워진다. TASK 5-4 §4)", file=f)
-
-          for line in rows:
-              print(line)
-          if improved:
-              print('::notice::커버리지가 올랐습니다. .coverage-baseline 을 갱신하십시오 -> '
-                    + ' / '.join(improved))
-          if failed:
-              print('::error::커버리지가 기준선 아래로 떨어졌습니다 -- ' + ' / '.join(failed))
-              sys.exit(1)
-          PY
+          python3 .github/scripts/coverage_gate.py coverage-out/coverage.json .coverage-baseline "커버리지"
 
       # --- 이미지 크기 기록 ------------------------------------------------
       # 의존성이 다시 불어나는 것을 눈에 띄게 한다 (1.44GB -> 521MB 로 줄인 상태).

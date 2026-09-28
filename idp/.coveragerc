@@ -1,0 +1,17 @@
+# IdP 커버리지 설정 — 본 앱 .coveragerc (TASK 5-4) 와 같은 기준 (TASK 5-12).
+#
+# 측정 대상은 IdP 코드(app/)뿐이다. 컨테이너 안에서 /workspace/app 이다.
+# branch = True: 라인만 보면 import 로 부풀려진다. 분기는 함수 본문의 갈림길이라 그렇지 않다.
+
+[run]
+source = app
+branch = True
+
+[report]
+show_missing = True
+# 게이트가 소수점 둘째 자리까지 비교하므로 리포트도 맞춘다.
+precision = 2
+exclude_also =
+    if TYPE_CHECKING:
+    raise NotImplementedError
+    if __name__ == .__main__.:
