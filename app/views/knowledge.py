@@ -102,16 +102,17 @@ class UtResourceAddedTextModelView(ModelView):
 
 class RoleSelectField(SelectField):
     """SelectField that shows all _role roles from the system."""
+    # WTForms 3.2 부터 (value, label, selected, render_kw) 4-튜플이어야 한다 (tests/test_char_select_fields.py)
     def iter_choices(self):
         try:
             from app import db
             from flask_appbuilder.security.sqla.models import Role
             all_roles = db.session.query(Role).filter(Role.name.contains('_role')).order_by(Role.name).all()
-            yield ('', '-- 선택 --', not self.data)
+            yield ('', '-- 선택 --', not self.data, {})
             for r in all_roles:
-                yield (r.name, r.name, self.data == r.name)
+                yield (r.name, r.name, self.data == r.name, {})
         except Exception:
-            yield ('', '(없음)', True)
+            yield ('', '(없음)', True, {})
 
     def pre_validate(self, form):
         pass  # choices are dynamic

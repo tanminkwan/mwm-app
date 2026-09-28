@@ -66,6 +66,7 @@ class GroupSelectField(SelectField):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    # WTForms 3.2 부터 (value, label, selected, render_kw) 4-튜플이어야 한다 (tests/test_char_select_fields.py)
     def iter_choices(self):
         try:
             roles = [r.name for r in g.user.roles]
@@ -77,11 +78,11 @@ class GroupSelectField(SelectField):
                 all_roles = db.session.query(Role).filter(Role.name.contains('_role')).all()
                 groups = [r.name for r in all_roles]
             if not groups:
-                yield ('', '(없음)', self.data == '')
+                yield ('', '(없음)', self.data == '', {})
             for group in groups:
-                yield (group, group, self.data == group)
+                yield (group, group, self.data == group, {})
         except Exception:
-            yield ('', '(없음)', True)
+            yield ('', '(없음)', True, {})
 
     def pre_validate(self, form):
         pass  # Allow any value since choices are dynamic
