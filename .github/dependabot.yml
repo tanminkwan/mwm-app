@@ -20,7 +20,7 @@ updates:
       day: "monday"
       time: "09:00"
       timezone: "Asia/Seoul"
-    # 액션 갱신을 PR 하나로 묶는다. 3개뿐이라 따로 열 이유가 없다.
+    # 액션 갱신을 PR 하나로 묶는다. 몇 개뿐이라 따로 열 이유가 없다.
     groups:
       github-actions:
         patterns:
