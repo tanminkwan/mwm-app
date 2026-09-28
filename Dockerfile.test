@@ -1,0 +1,18 @@
+# 테스트 전용 이미지.
+#
+# 운영 이미지(mwm-app) 위에 테스트 도구만 얹는다. **배포되지 않는다.**
+# 운영 배포 경로는 mwm-base → mwm-app 2단계 그대로다.
+#
+# 왜 별도 이미지인가: pytest 를 requirements.txt 에 두면 Dockerfile.base 가
+# 설치해 운영 이미지에까지 실린다. 그렇다고 테스트할 때마다 pip install 을
+# 하면 매 실행이 네트워크에 의존한다.
+#
+# mwm-app 을 그대로 FROM 하므로 **테스트 대상은 여전히 배포 이미지 자체**다.
+# 테스트 도구 설치가 앱 의존성 버전을 바꾸지 않았는지는 CI 가 pip freeze 로 검증한다.
+#
+
+FROM mwm-app
+
+COPY requirements-dev.txt /tmp/requirements-dev.txt
+RUN pip install --no-cache-dir -r /tmp/requirements-dev.txt \
+ && rm /tmp/requirements-dev.txt

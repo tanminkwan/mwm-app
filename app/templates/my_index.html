@@ -1,0 +1,629 @@
+{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+    :root {
+        --primary-color: #3b82f6;
+        --secondary-color: #6366f1;
+        --bg-color: #f8fafc;
+        --card-bg: #ffffff;
+        --text-main: #1e293b;
+        --text-muted: #64748b;
+        --border-color: #e2e8f0;
+        --danger-color: #ef4444;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --radius: 12px;
+        --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    }
+
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        line-height: 1.6;
+        font-size: 18px;
+    }
+
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 3rem;
+    }
+
+    header {
+        margin-bottom: 3.5rem;
+        text-align: center;
+    }
+
+    #main-title {
+        font-size: 3.8rem;
+        font-weight: 800;
+        color: var(--text-main);
+        letter-spacing: -0.025em;
+        margin-bottom: 1rem;
+    }
+
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 2.5rem;
+    }
+
+    .full-width {
+        grid-column: span 2;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 2.5rem;
+        border: 1px solid var(--border-color);
+        transition: transform 0.2s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+    }
+
+    .card-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid var(--bg-color);
+        padding-bottom: 1.25rem;
+    }
+
+    .card-title h3 {
+        margin: 0;
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: var(--secondary-color);
+    }
+
+    h4 {
+        font-size: 1.6rem;
+        color: var(--text-muted);
+        margin: 2.5rem 0 1.5rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 18px;
+    }
+
+    th {
+        background: var(--bg-color);
+        color: var(--text-muted);
+        font-weight: 600;
+        text-align: left;
+        padding: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+        padding: 16px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-main);
+    }
+
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    tr:hover td {
+        background-color: #f1f5f9;
+    }
+
+    .btn {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .btn:hover {
+        background-color: #2563eb;
+    }
+
+    /* Table Specific Header Colors */
+    #agentStat th {
+        border-top: 3px solid var(--success-color);
+    }
+
+    #offline th {
+        border-top: 3px solid var(--danger-color);
+    }
+
+    #uncheckedWasList th {
+        border-top: 3px solid var(--warning-color);
+    }
+
+    #notRunnigWasList th {
+        border-top: 3px solid var(--danger-color);
+    }
+
+    #changedWASList th,
+    #changedWEBList th {
+        border-top: 3px solid var(--primary-color);
+    }
+
+    #recent_knowledge_list th {
+        border-top: 3px solid var(--secondary-color);
+    }
+
+    #certStat th {
+        border-top: 3px solid var(--warning-color);
+    }
+
+    #configFilesList th,
+    #erroWasList th {
+        border-top: 3px solid var(--danger-color);
+    }
+
+    .overlay {
+        display: none;
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(4px);
+    }
+
+    .overlay::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 40px;
+        height: 40px;
+        margin: -20px 0 0 -20px;
+        border: 4px solid var(--bg-color);
+        border-top: 4px solid var(--primary-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    body.loading .overlay {
+        display: block;
+    }
+
+    a {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    a:hover {
+        text-decoration: underline;
+    }
+
+    .total-row td {
+        font-weight: 800 !important;
+        background-color: #f9fafb !important;
+        border-top: 2px solid var(--secondary-color) !important;
+        color: var(--secondary-color) !important;
+    }
+</style>
+
+<div class="container">
+    <header>
+        <h2 id="main-title">미들웨어관리소 2.5 Dashboard</h2>
+        <p style="color: var(--text-muted);">Real-time Middleware Monitoring System</p>
+    </header>
+
+    <div class="dashboard-grid">
+        {% if g.user.is_authenticated %}
+        <!-- Agent Stat Section (Col 1, Top) -->
+        <div class="card" id="agent-stat-card">
+            <div class="card-title">
+                <h3>[Agent 상태 현황]</h3>
+            </div>
+            <div class="table-wrapper" id="agent-stat-content">
+                <table id="agentStat"></table>
+            </div>
+        </div>
+
+        <!-- SSL Section (Col 2, Top) -->
+        <div class="card" id="ssl-card">
+            <div class="card-title">
+                <h3>[SSL인증서 만료 현황]</h3>
+                <a href="/sslcertstatusview/" class="btn" style="font-size: 14px; padding: 0.3rem 0.8rem;">전체 현황 보기</a>
+            </div>
+            <div class="table-wrapper">
+                <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 5px;">* 상세 내역(JEUS 및 중간인증서)은 우측 상단의
+                    '전체 현황 보기'를 클릭하세요.</p>
+                <table id="certStat"></table>
+            </div>
+        </div>
+
+        <!-- Offline Agent Section (Col 1, Bottom) -->
+        <div class="card" id="offline-agent-card">
+            <div class="card-title">
+                <h3>[미접속/장기미사용 Agent 목록]</h3>
+            </div>
+            <div class="table-wrapper" id="offline-content">
+                <table id="offline"></table>
+            </div>
+        </div>
+
+        <!-- WAS Section (Col 2, Bottom) -->
+        <div class="card" id="was-card">
+            <div class="card-title">
+                <h3>[WAS 상태]</h3>
+                <div>
+                    <button class="btn" id="btn-load-was" onclick="loadWasStatus()"
+                        style="margin-right: 5px; background-color: var(--secondary-color);">조회</button>
+                    <button class="btn" onclick="recheckStatus()">상태 업데이트</button>
+                </div>
+            </div>
+            <div id="recheck-container">
+                <div id="recheck-message"></div>
+                <div id="recheck-trace"></div>
+            </div>
+            <div id="was-status-content" style="display:none;">
+                <h4>1) 상태 Check 불가 WAS List</h4>
+                <div class="table-wrapper">
+                    <table id="uncheckedWasList"></table>
+                </div>
+                <h4>2) 비정상 WAS Instance List</h4>
+                <div class="table-wrapper">
+                    <table id="notRunnigWasList"></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Config Changes Section -->
+        <div class="card full-width" id="config-card">
+            <div class="card-title">
+                <h3>[Configuration 변경 소식]</h3>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <div>
+                    <h4>1) WAS Config 변경 List</h4>
+                    <table id="changedWASList"></table>
+                </div>
+                <div>
+                    <h4>2) WEB Config 변경 List</h4>
+                    <table id="changedWEBList"></table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Knowledge Section -->
+        <div class="card full-width" id="knowledge-card">
+            <div class="card-title">
+                <h3>[신규 지식 등록 소식]</h3>
+            </div>
+            <table id="recent_knowledge_list"></table>
+        </div>
+
+        <!-- Failure Section -->
+        <div class="card full-width" id="failure-card">
+            <div class="card-title">
+                <h3>[수행 실패 및 오류 소식]</h3>
+            </div>
+            <h4>1) Config 파일 Error List</h4>
+            <table id="configFilesList"></table>
+            <h4 style="margin-top: 2rem;">2) WAS 상태 조회 Error List</h4>
+            <table id="erroWasList"></table>
+        </div>
+        {% else %}
+        <!-- Not Logged In Message -->
+        <div class="card full-width" style="text-align: center; padding: 5rem;">
+            <h3 style="color: var(--text-muted); margin-bottom: 1.5rem;">서비스를 이용하시려면 로그인이 필요합니다.</h3>
+            <div style="display: flex; justify-content: center; gap: 1.5rem; flex-wrap: wrap;">
+                <a href="/idp/login" class="btn"
+                    style="display: inline-block; text-decoration: none; padding: 1.2rem 2.5rem; font-size: 1.3rem; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3); font-weight: 700;">
+                    🔐 MWM IDP 계정으로 로그인
+                </a>
+                <a href="/login/" class="btn"
+                    style="display: inline-block; text-decoration: none; padding: 1.2rem 2.5rem; font-size: 1.3rem; background-color: #64748b; color: white; border-radius: 12px;">
+                    ID / PW로 Login 하기
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="overlay"></div>
+<script>
+
+    $(document).on({
+        ajaxStart: function () {
+            $('body').addClass("loading");
+        },
+        ajaxStop: function () {
+            $('body').removeClass("loading");
+        }
+    })
+
+    function recheckStatus() {
+        $.ajax({
+            url: "/monitor/recheckStatus",
+            success: function (data) {
+                $('#recheck-message').html(data.message);
+                $('#recheck-trace').html(data.trace);
+            }
+        });
+    }
+
+    function checkTableAndHide(tableId, cardId) {
+        if ($('#' + tableId + ' tr').length <= 1) { // Only header or empty
+            $('#' + cardId).hide();
+            return true;
+        }
+        $('#' + cardId).show();
+        return false;
+    }
+
+    function formatDate(d) {
+        var day = ("0" + d.getDate()).slice(-2);
+        var month = ("0" + (d.getMonth() + 1)).slice(-2);
+        return month + "/" + day + "/" + d.getFullYear();
+    }
+
+    function gotoSSLList(status, type) {
+        var url = "";
+        if (type === 'webtob') {
+            url = "/webdomainmodelview/list/?_flt_0_ssl_yn=YES";
+        } else {
+            url = "/washttplistenermodelview/list/?_flt_0_ssl_yn=YES";
+        }
+
+        var now = new Date();
+        var d7 = new Date(); d7.setDate(now.getDate() + 7);
+        var d30 = new Date(); d30.setDate(now.getDate() + 30);
+
+        var date_flt = "";
+        var col_name = (type === 'webtob') ? "notafter" : "mw_etc_ssl_domain.notafter";
+
+        if (status == '만료') {
+            date_flt = "&_flt_2_" + col_name + "=" + formatDate(now);
+        } else if (status == '임박') {
+            date_flt = "&_flt_1_" + col_name + "=" + formatDate(now) + "&_flt_2_" + col_name + "=" + formatDate(d7);
+        } else if (status == '주의') {
+            date_flt = "&_flt_1_" + col_name + "=" + formatDate(d7) + "&_flt_2_" + col_name + "=" + formatDate(d30);
+        } else if (status == '정상') {
+            date_flt = "&_flt_1_" + col_name + "=" + formatDate(d30);
+        } else if (status == '미확인') {
+            date_flt = "&_flt_0_" + col_name + "=y";
+        }
+        window.open(url + date_flt, '_blank');
+    }
+
+    {% if g.user.is_authenticated %}
+    $.ajax({
+        url: "/monitor/agent_stat",
+        success: function (data) {
+            if (!data || !data.agent_stat) {
+                console.log("No agent_stat data found (Auth error or empty)");
+                return;
+            }
+            var stats = data.agent_stat;
+            var offlines = data.offline_agents || [];
+
+            // Build the Agent Stat Table
+            var landscapes = ['PROD', 'TEST', 'DEV'];
+            var rows = [
+                { id: 'online', label: 'online' },
+                { id: 'offline', label: 'Offline' },
+                { id: 'long_term_unused', label: '장기미사용' },
+                { id: 'total', label: '전체' }
+            ];
+
+            var header = "<tr><th>상태</th>" + landscapes.map(l => "<th style='text-align:right;'>" + l + "</th>").join('') + "<th style='text-align:right;'>전체</th></tr>";
+            $('#agentStat').html(header);
+
+            rows.forEach(row => {
+                var tr = $("<tr><td>" + row.label + "</td></tr>");
+                var rowTotal = 0;
+
+                landscapes.forEach(l => {
+                    var val = 0;
+                    var found = stats.find(s => s.landscape === l);
+                    if (found) val = found[row.id] || 0;
+                    tr.append("<td style='text-align:right;'>" + val + "</td>");
+                    rowTotal += val;
+                });
+                tr.append("<td style='text-align:right; font-weight:bold;'>" + rowTotal + "</td>");
+
+                if (row.id === 'total') tr.addClass('total-row');
+                $('#agentStat').append(tr);
+            });
+
+            $('#offline').html("");
+            $(offlines).each(function (key, item) {
+                if (key == 0) {
+                    $('#offline').append("<tr><th>Landscape</th><th>Agent ID</th><th>Agent 이름</th><th>최종통신일시</th></tr>");
+                }
+                $('#offline').append("<tr><td>" + item.landscape + "</td><td>" + item.agent_id + "</td><td>" + item.agent_name + "</td><td>" + item.last_checked_date + "</td></tr>");
+            });
+
+            checkTableAndHide('offline', 'offline-agent-card');
+        }
+    });
+
+    function renderExpiryTable(tableId, stats, type) {
+        var landscapes = ['PROD', 'TEST', 'DEV'];
+        var statuses = ['정상', '주의', '임박', '만료', '미확인', '전체'];
+
+        var header = "<tr><th>상태</th>" + landscapes.map(l => "<th style='text-align:right;'>" + l + "</th>").join('') + "<th style='text-align:right;'>전체</th></tr>";
+        $('#' + tableId).html(header);
+
+        statuses.forEach(status => {
+            var item = stats.find(s => s.status === status);
+            if (!item) return;
+
+            if (status !== '정상' && status !== '전체' && item.total <= 0) {
+                return;
+            }
+
+            var isTotal = (status === '전체');
+            var rowClass = isTotal ? "class='total-row'" : "";
+            var rowStyle = isTotal ? "" : "style='cursor:pointer;'";
+
+            var row = $("<tr " + rowClass + " " + rowStyle + "><td>" + status + "</td><td style='text-align:right;'>" + item.PROD + "</td><td style='text-align:right;'>" + item.TEST + "</td><td style='text-align:right;'>" + item.DEV + "</td><td style='text-align:right;'>" + item.total + "</td></tr>");
+
+            if (!isTotal) {
+                row.click(function () { gotoSSLList(status, type); });
+            }
+            $('#' + tableId).append(row);
+        });
+
+        if (tableId === 'certStatJeus') {
+            $('#' + tableId).after("<div id='certStatJeusNote' style='font-size:12px;color:gray;margin-top:5px;'>* 임박: 만료 7일 이내, 주의: 만료 30일 이내</div>");
+        }
+    }
+
+    $.ajax({
+        url: "/api/v1/monitor/cert_expiry_stat",
+        success: function (data) {
+            if (!data || !data.cert_expiry_stat) {
+                console.log("No cert_expiry_stat data found");
+                return;
+            }
+            renderExpiryTable('certStat', data.cert_expiry_stat, 'webtob');
+            checkTableAndHide('certStat', 'ssl-card');
+        }
+    });
+
+    function loadWasStatus() {
+        $('#btn-load-was').hide();
+        $('#was-status-content').show();
+
+        $.ajax({
+            url: "/monitor/get_not_running_was_list",
+            success: function (data) {
+                if (!data || (!data.uncheckedWas && !data.notRunningWas)) {
+                    return;
+                }
+                var obj1 = data.uncheckedWas || [];
+                var obj2 = data.notRunningWas || [];
+                $('#uncheckedWasList').html("");
+                $(obj1).each(function (key, item) {
+                    if (key == 0) {
+                        $('#uncheckedWasList').append("<tr><th>Domain ID</th><th>Host ID</th><th>System User</th></tr>");
+                    }
+                    $('#uncheckedWasList').append("<tr><td>" + item.domain_id + "</td><td>" + item.host_id + "</td><td>" + item.sys_user + "</td></tr>");
+                });
+                $('#notRunnigWasList').html("");
+                $(obj2).each(function (key, item) {
+                    if (key == 0) {
+                        $('#notRunnigWasList').append("<tr><th>Domain ID</th><th>설명</th><th>Instance ID</th><th>상태</th></tr>");
+                    }
+                    $('#notRunnigWasList').append("<tr><td>" + item.domain_id + "</td><td>" + item.was_instance_group + "</td><td>" + item.was_instance_id + "</td><td>" + item.was_instance_stat + "</td></tr>");
+                });
+
+                if ($('#uncheckedWasList tr').length <= 1 && $('#notRunnigWasList tr').length <= 1) {
+                    $('#was-card').hide();
+                } else {
+                    $('#was-card').show();
+                }
+            }
+        });
+    }
+
+    $.ajax({
+        url: "/monitor/get_error_results",
+        success: function (data) {
+            if (!data || (!data.configFilesList && !data.erroWasList)) {
+                return;
+            }
+            var obj1 = data.configFilesList || [];
+            var obj2 = data.erroWasList || [];
+            $(obj1).each(function (key, item) {
+                if (key == 0) {
+                    $('#configFilesList').append("<tr><th>상세조회</th><th>Agent ID</th><th>Host ID</th><th>file명</th><th>file경로</th><th>상태</th><th>수신일시</th></tr>");
+                }
+                $('#configFilesList').append("<tr><td><a href=\"/resultmodelview/show/" + item.id + "\" target=\"_blank\">" + item.command_id + "</a></td><td>" + item.agent_id + "</td><td>" + item.host_id + "</td><td>" + item.key_value1 + "</td><td>" + item.key_value2 + "</td><td>" + item.result_status + "</td><td>" + item.create_on + "</td></tr>");
+            });
+            $(obj2).each(function (key, item) {
+                if (key == 0) {
+                    $('#erroWasList').append("<tr><th>상세조회</th><th>Agent ID</th><th>Host ID</th><th>조회조건</th><th>상태</th><th>수신내용</th><th>수신일시</th></tr>");
+                }
+                $('#erroWasList').append("<tr><td><a href=\"/resultmodelview/show/" + item.id + "\" target=\"_blank\">" + item.command_id + "</a></td><td>" + item.agent_id + "</td><td>" + item.host_id + "</td><td>" + item.key_value2 + "</td><td>" + item.result_status + "</td><td>" + item.result_text + "</td><td>" + item.create_on + "</td></tr>");
+            });
+
+            if ($('#configFilesList tr').length <= 1 && $('#erroWasList tr').length <= 1) {
+                $('#failure-card').hide();
+            } else {
+                $('#failure-card').show();
+            }
+        }
+    });
+
+    $.ajax({
+        url: "/monitor/get_changed_configs",
+        success: function (data) {
+            if (!data || (!data.changedWASList && !data.changedWEBList)) {
+                return;
+            }
+            var obj1 = data.changedWASList || [];
+            var obj2 = data.changedWEBList || [];
+            $(obj1).each(function (key, item) {
+                if (key == 0) {
+                    $('#changedWASList').append("<tr><th>Domain ID</th><th>Landscape</th><th>Host ID</th><th>WAS 명</th><th>변경일시</th></tr>");
+                }
+                $('#changedWASList').append("<tr><td><a href=\"/diff/was/" + item.id + "\" target=\"_blank\">" + item.was_id + "</a></td><td>" + item.landscape + "</td><td>" + item.host_id + "</td><td>" + item.was_name + "</td><td>" + item.create_on + "</td></tr>");
+            });
+            $(obj2).each(function (key, item) {
+                if (key == 0) {
+                    $('#changedWEBList').append("<tr><th>Host ID</th><th>Port</th><th>Landscape</th><th>WEB 서버 명</th><th>변경일시</th></tr>");
+                }
+                $('#changedWEBList').append("<tr><td><a href=\"/diff/web/" + item.id + "\" target=\"_blank\">" + item.host_id + "</a></td><td>" + item.port + "</td><td>" + item.landscape + "</td><td>" + item.web_name + "</td><td>" + item.create_on + "</td></tr>");
+            });
+
+            if ($('#changedWASList tr').length <= 1 && $('#changedWEBList tr').length <= 1) {
+                $('#config-card').hide();
+            } else {
+                $('#config-card').show();
+            }
+        }
+    });
+
+    $.ajax({
+        url: "/monitor/recent_knowledge_list",
+        success: function (data) {
+            if (!data || !data.recent_knowledge_list) {
+                return;
+            }
+            var obj1 = data.recent_knowledge_list;
+            $(obj1).each(function (key, item) {
+                if (key == 0) {
+                    $('#recent_knowledge_list').append("<tr><th>분류</th><th>Title</th><th>작성일시</th><th>최초작성일시</th><th>작성자ID</th></tr>");
+                }
+                $('#recent_knowledge_list').append("<tr><td>" + item.category + "</td><td><a href=\"/ut/" + item.content_type + "content/" + item.id + "\" target=\"_blank\">" + item.content_name + "</a></td><td>" + item.update_on + "</td><td>" + item.create_on + "</td><td>" + item.user_id + "</td></tr>");
+            });
+            checkTableAndHide('recent_knowledge_list', 'knowledge-card');
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}

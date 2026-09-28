@@ -1,0 +1,151 @@
+{% extends "appbuilder/base.html" %}
+{% import 'appbuilder/general/lib.html' as lib %}
+
+{% block content %}
+<link rel="stylesheet" href="/static/css/summernote-lite.css" />
+<script src="/static/js/summernote-lite.js"></script>
+<script src="/static/js/lang/summernote-ko-KR.js"></script>
+<style>
+    .file-dropzone {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        color: #888;
+        margin: 10px 0;
+        transition: all 0.3s;
+        background: #fafafa;
+    }
+
+    .file-dropzone.dragover {
+        border-color: #3498db;
+        background: #ebf5fb;
+        color: #2980b9;
+    }
+
+    .uploaded-file-item {
+        display: inline-block;
+        background: #e8f4fd;
+        border: 1px solid #bee5eb;
+        border-radius: 4px;
+        padding: 4px 10px;
+        margin: 3px 4px;
+        font-size: 13px;
+    }
+
+    .uploaded-file-item a {
+        color: #2c7be5;
+        text-decoration: none;
+    }
+</style>
+
+{{ lib.panel_begin(title, "edit") }}
+
+{% if related_views is defined %}
+<ul class="nav nav-tabs" style="{{" display: none;" if not related_views else "" }}">
+    <li class="active"><a href="#Home" data-toggle="tab">{{ _("Detail") }}</a> </li>
+    {% for view in related_views %}
+    <li><a href="#{{view.__class__.__name__}}" data-toggle="tab">{{view.title}}</a></li>
+    {% endfor %}
+</ul>
+
+<div class="tab-content">
+    {% for view in related_views %}
+    <div id="{{view.__class__.__name__}}" class="tab-pane">
+        {{ widgets.get('related_views')[loop.index - 1]()|safe }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% block edit_form %}
+    <div id="Home" class="tab-pane active">
+        {{ widgets.get('edit')(form_action=form_action)|safe }}
+    </div>
+    {% endblock %}
+
+    {% if related_views is defined %}
+</div> {% endif %}
+
+{{ lib.panel_end() }}
+{% endblock %}
+
+{% block add_tail_js %}
+<script>
+    $(document).ready(function () {
+        $('#{{summer_column}}').summernote({
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'underline', 'clear', 'forecolor']],
+                ['fontname', ['fontname']],
+                ['fontsize', ['fontsize']],
+                ['color', ['color']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['table', ['table']],
+                ['insert', ['link', 'picture', 'video']],
+                ['view', ['fullscreen', 'codeview', 'help']],
+            ],
+            height: 700,
+            minHeight: null,
+            maxHeight: null,
+            focus: true,
+            lang: "ko-KR",
+            placeholder: '미들웨어관리소 KMS'
+        });
+
+        // === Drag & Drop File Upload ===
+        var uploadedFileIds = [];
+        var hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'uploaded_file_ids';
+        hiddenInput.value = '';
+        var form = document.querySelector('form');
+        if (form) form.appendChild(hiddenInput);
+
+        var editorEl = document.querySelector('.note-editor') || document.getElementById('{{summer_column}}');
+        var dropzone = document.createElement('div');
+        dropzone.className = 'file-dropzone';
+        dropzone.innerHTML = '<i class="fa fa-cloud-upload"></i> 파일을 여기에 드래그하여 첨부하세요';
+        if (editorEl) editorEl.parentNode.insertBefore(dropzone, editorEl.nextSibling);
+
+        var fileListEl = document.createElement('div');
+        fileListEl.style = 'margin:8px 0;';
+        if (dropzone.parentNode) dropzone.parentNode.insertBefore(fileListEl, dropzone.nextSibling);
+
+        ['dragenter', 'dragover'].forEach(function (evt) {
+            dropzone.addEventListener(evt, function (e) { e.preventDefault(); dropzone.classList.add('dragover'); });
+        });
+        ['dragleave', 'drop'].forEach(function (evt) {
+            dropzone.addEventListener(evt, function (e) { e.preventDefault(); dropzone.classList.remove('dragover'); });
+        });
+        dropzone.addEventListener('drop', function (e) {
+            if (e.dataTransfer && e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
+        });
+
+        function handleFiles(files) { for (var i = 0; i < files.length; i++) uploadFile(files[i]); }
+
+        function uploadFile(file) {
+            var fd = new FormData();
+            fd.append('file', file);
+            dropzone.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 업로드 중: ' + file.name;
+            $.ajax({
+                url: '/ut/upload_file', type: 'POST', data: fd,
+                processData: false, contentType: false,
+                success: function (data) {
+                    uploadedFileIds.push(data.file_id);
+                    hiddenInput.value = uploadedFileIds.join(',');
+                    var item = '<span class="uploaded-file-item"><a href="' + data.download_url + '">📎 ' + data.file_name + '</a></span>';
+                    fileListEl.innerHTML += item;
+                    dropzone.innerHTML = '<i class="fa fa-cloud-upload"></i> 파일을 여기에 드래그하여 첨부하세요';
+                },
+                error: function (xhr) {
+                    var msg = xhr.responseJSON ? xhr.responseJSON.error : '업로드 실패';
+                    alert('파일 업로드 실패: ' + msg);
+                    dropzone.innerHTML = '<i class="fa fa-cloud-upload"></i> 파일을 여기에 드래그하여 첨부하세요';
+                }
+            });
+        }
+
+    });
+</script>
+<script src="{{url_for('appbuilder.static',filename='js/ab_keep_tab.js')}}"></script>
+{% endblock %}

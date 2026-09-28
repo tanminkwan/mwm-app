@@ -1,0 +1,20 @@
+# 커버리지 설정 (TASK 5-4)
+#
+# 측정 대상은 우리 코드(app/)뿐이다. 라이브러리는 세지 않는다.
+#
+# branch = True 인 이유: 라인 커버리지만 보면 **import 만으로 38% 가 찍힌다.**
+# class·def·컬럼 선언이 모두 "실행된 구문"으로 잡히기 때문이다.
+# 분기 커버리지는 함수 본문 안의 갈림길을 세므로 import 로 부풀릴 수 없다.
+
+[run]
+source = app
+branch = True
+
+[report]
+show_missing = True
+# 게이트(TASK 5-9)가 소수점 둘째 자리까지 비교하므로 리포트도 맞춘다.
+precision = 2
+exclude_also =
+    if TYPE_CHECKING:
+    raise NotImplementedError
+    if __name__ == .__main__.:

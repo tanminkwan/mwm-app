@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_title }} - Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 480px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .user-avatar {
+            width: 80px; height: 80px;
+            background: linear-gradient(135deg, #38bdf8, #228be6);
+            border-radius: 50%;
+            margin: 0 auto 24px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 32px; color: white; font-weight: bold;
+        }
+        .meta { 
+            background: rgba(0, 0, 0, 0.2);
+            padding: 16px; border-radius: 12px;
+            margin-bottom: 24px; text-align: left; font-size: 14px;
+        }
+        .meta-item { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .label { color: #64748b; }
+        .btn-admin {
+            display: block; width: 100%; padding: 12px;
+            background: linear-gradient(135deg, #38bdf8, #228be6);
+            border-radius: 12px; color: white;
+            text-decoration: none; font-weight: 600;
+            margin-bottom: 24px; transition: all 0.2s;
+            box-shadow: 0 6px 16px rgba(56, 189, 248, 0.4);
+        }
+        .api-key-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            padding: 12px; border-radius: 8px;
+            margin-bottom: 12px; font-family: monospace; font-size: 12px;
+            word-break: break-all;
+        }
+        .btn-rotate {
+            background: none; border: none; color: #38bdf8;
+            font-size: 11px; cursor: pointer; text-decoration: underline;
+        }
+        .btn-logout {
+            display: inline-block; padding: 12px 32px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px; color: #f8fafc;
+            text-decoration: none; font-weight: 500; transition: all 0.2s;
+        }
+        .btn-logout:hover {
+            background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: #ef4444;
+        }
+        .badge {
+            font-size: 10px; padding: 2px 6px; border-radius: 4px;
+            background: rgba(56, 189, 248, 0.2); color: #38bdf8; margin-left: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <!-- 1. Header -->
+        <div class="user-avatar">{{ user.username[0] | upper }}</div>
+        <h1 style="font-size: 24px; margin-bottom: 8px;">안녕하세요, {{ user.username }}님!</h1>
+        <p style="color: #94a3b8; margin-bottom: 24px; font-size: 14px;">IDP 서비스에 안전하게 로그인되어 있습니다. (v 최종교정)</p>
+        
+        <!-- 2. Meta Info -->
+        <div class="meta">
+            <div class="meta-item">
+                <span class="label">이메일</span>
+                <span>{{ user.email }}</span>
+            </div>
+            <div class="meta-item">
+                <span class="label">상태</span>
+                <span style="color: #10b981;">● Active</span>
+            </div>
+        </div>
+        
+        <!-- 3. Actions -->
+        <div style="margin-top: 32px;">
+            <a href="{{ url_for('auth.client_list') }}" class="btn-admin">클라이언트 관리</a>
+            
+            {% if 'Admin' in user.roles or 'PowerUser' in user.roles %}
+            <div style="margin-bottom: 24px;">
+                <a href="{{ url_for('auth.admin_settings') }}" class="btn-admin" style="background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);">
+                    <i class="fas fa-tools"></i> 관리자 설정 센터 (Admin Console)
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- 4. Footer -->
+        <div style="margin-top: 16px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.1);">
+            <a href="{{ url_for('auth.logout') }}" class="btn-logout">로그아웃 세션 종료</a>
+        </div>
+    </div> <!-- .card END -->
+
+    <!-- Resources -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        function toggleShowKey() {
+            const masked = document.getElementById('maskedKey');
+            const real = document.getElementById('realKey');
+            const icon = document.getElementById('eyeIcon');
+            if (real.style.display === 'none') {
+                real.style.display = 'block'; masked.style.display = 'none';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                real.style.display = 'none'; masked.style.display = 'block';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+        function copyToClipboard() {
+            const text = document.getElementById('realKey').value;
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(showSuccess).catch(fallbackCopy);
+            } else { fallbackCopy(); }
+            function fallbackCopy() {
+                try {
+                    const t = document.createElement('textarea'); t.value = text;
+                    document.body.appendChild(t); t.select(); document.execCommand('copy');
+                    document.body.removeChild(t); showSuccess();
+                } catch (err) { alert('복사 실패: ' + text); }
+            }
+            function showSuccess() {
+                const m = document.getElementById('copyMsg'); m.style.display = 'inline';
+                setTimeout(() => { m.style.display = 'none'; }, 2000);
+            }
+        }
+    </script>
+</body>
+</html>

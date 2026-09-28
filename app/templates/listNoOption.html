@@ -1,0 +1,48 @@
+{% extends "appbuilder/base.html" %}
+{% import 'appbuilder/general/lib.html' as lib %}
+
+{% block content %}
+
+{{ lib.panel_begin(title) }}
+
+    {% block list_list scoped %}
+        <div>
+            {{ widgets.get('list')()|safe }}
+        </div>
+    {% endblock %}
+
+{{ lib.panel_end() }}
+<script type="text/javascript">
+    $(document).ready(function() {
+        $('.create_report').on('click', function(){   
+            modelActions = new AdminActions()       
+            return modelActions.execute_multiple('create_report','Report를 생성하시겠습니까?');            
+        })
+    });
+    function getReportedTime(){
+        var rt = document.getElementById("reported_time").innerHTML;
+        var new_rt = rt.substring(0,4) + "-" + rt.substring(4,6) + "-" + rt.substring(6,8) + " " + rt.substring(9,11) + ":" + rt.substring(11,13);
+        var text = 'Report 생성 일시 : ' + new_rt;
+        document.write(text);
+    }
+</script>
+<form id="action_form" action="/mowasstatusreportmodelview/action_post" method="POST" style="display: none">
+    <input type="hidden" id="action" name="action">
+</form>
+<div style="font-size:12px;">
+    <div style="text-align:left;float: left;">
+        <a href="javascript:void(0)" class="create_report" style="font-weight:bold;font-size:16px;padding:14px;"><script>getReportedTime();</script></a>
+    </div>
+    <div style="text-align:right;float: right;">
+        <span style="font-weight:bold;padding: 12px;">[범례]</span>
+        <span style="background-color:black;color:black;padding: 2px;">TEST</span>
+        <span style="padding: 10px;">점검실패</span>
+        <span style="background-color:#AED6F1;color:#AED6F1;padding: 2px;">TEST</span>
+        <span style="padding: 10px;">RUNNING</span>
+        <span style="background-color:red;color:red;padding: 2px;">TEST</span>
+        <span style="padding: 10px;">SHUTDOWN 또는 FAILED</span>
+        <span style="background-color:green;color:green;padding: 2px;">TEST</span>
+        <span style="padding: 10px;">STANDBY(Application Deploy Error)</span>
+    </div>
+</div>
+{% endblock %}

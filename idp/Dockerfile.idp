@@ -1,0 +1,17 @@
+FROM python:3.12.4-slim-bookworm
+
+WORKDIR /workspace
+
+COPY requirements.txt requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# app 패키지를 /workspace/app/ 로 복사
+COPY app/ /workspace/app/
+COPY tests/ /workspace/tests/
+
+# PYTHONPATH에 workspace 추가하여 `from app import ...` 가능하게
+ENV PYTHONPATH=/workspace
+
+EXPOSE 5000
+
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "-w", "1", "app.run:app"]

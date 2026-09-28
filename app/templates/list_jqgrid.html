@@ -1,0 +1,488 @@
+{% extends "appbuilder/base.html" %}
+{% block content %}
+<html>
+<head>
+    <meta charset="utf-8" />
+    <link href="/static/css/jquery-ui.min.css" type="text/css" rel="stylesheet" />
+    <link href="/static/css/ui.jqgrid.css" type="text/css" rel="stylesheet" />
+    <script src="/static/js/jquery-ui.min.js"></script>
+    <script src="/static/js/moment.js"></script>
+    <script src="/static/js/grid.locale-kr.js"></script>
+    <script src="/static/js/jquery.jqGrid.min.js"></script> 
+    <script src="/static/js/xlsx.full.min.js"></script>
+</head>
+
+<style>
+  :root {
+    --primary-color: #4361ee;
+    --accent-color: #4895ef;
+    --bg-gradient: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    --card-bg: rgba(255, 255, 255, 0.95);
+    --text-primary: #2b2d42;
+    --border-radius: 12px;
+    --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+  }
+
+  body {
+    background: var(--bg-gradient);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text-primary);
+    margin: 0;
+    padding: 24px;
+  }
+
+  /* Header Section */
+  .grid-header-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding: 0 10px;
+  }
+
+  .selector-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card-bg);
+    padding: 10px 20px;
+    border-radius: 50px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(255,255,255,0.3);
+  }
+
+  .selector-wrapper label {
+    font-weight: 600;
+    color: var(--primary-color);
+  }
+
+  input#grid-selector_i {
+    border: none;
+    background: transparent;
+    font-size: 15px;
+    outline: none;
+    width: 250px;
+    color: var(--text-primary);
+  }
+
+  /* Filter Section */
+  .filter-container {
+    background: var(--card-bg);
+    backdrop-filter: blur(4px);
+    border-radius: var(--border-radius);
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow);
+    border: 1px solid rgba(255,255,255,0.3);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-end;
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 200px;
+  }
+
+  .filter-group label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .filter-inputs {
+    display: flex;
+    gap: 4px;
+  }
+
+  .filter-inputs select, .filter-inputs input {
+    border: 1px solid #dee2e6;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+
+  .filter-inputs select {
+    background-color: #f1f3f5;
+    width: 70px;
+  }
+
+  .filter-inputs input {
+    flex-grow: 1;
+  }
+
+  .filter-inputs select:focus, .filter-inputs input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(72, 149, 239, 0.2);
+    outline: none;
+  }
+
+  .btn-search {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    height: 40px;
+    align-self: flex-end;
+    margin-bottom: 2px;
+  }
+
+  .btn-search:hover {
+    background: #3a56e4;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.3);
+  }
+
+  /* Grid Customization */
+  .ui-jqgrid {
+    border-radius: var(--border-radius) !important;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    border: none !important;
+  }
+
+  .ui-jqgrid-hdiv {
+    background: #f8f9fa !important;
+    border-bottom: 2px solid #dee2e6 !important;
+  }
+
+  .ui-jqgrid-titlebar {
+    background: var(--primary-color) !important;
+    padding: 16px 20px !important;
+  }
+
+  .ui-jqgrid-title {
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    letter-spacing: -0.5px;
+  }
+
+  .ui-jqgrid tr.jqgrow td {
+    padding: 12px 8px !important;
+    border-color: #f1f3f5 !important;
+  }
+
+  .ui-jqgrid tr.jqgrow:hover {
+    background: #f8f9ff !important;
+  }
+
+  /* Overlay */
+  .overlay {
+    display: none;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(2px);
+  }
+
+  .spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 50px;
+    height: 50px;
+    border: 5px solid #f3f3f3;
+    border-top: 5px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: translate(-50%, -50%) rotate(0deg); }
+    100% { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+
+</style>
+
+<body>
+<div class="grid-header-section">
+  <div class="selector-wrapper">
+    <label>조회 구분</label>
+    <input list="grid-selector" id="grid-selector_i" placeholder="조회할 정보를 선택하세요...">
+    <datalist id="grid-selector"></datalist>
+  </div>
+  <button id="export" class="btn-search" style="display:none; background: #2d6a4f;">EXCEL 내보내기</button>
+</div>
+{% if param %}
+<div class="filter-container" id="condition">
+  {% if condition %}
+    {% for cd in condition %}
+      <div class="filter-group" id="cond_g_{{loop.index0}}">
+        <label>{{cd['label']}}</label>
+        <div class="filter-inputs">
+          <select id="cond_d_{{loop.index0}}" column="{{cd['name']}}">
+            <option value=""></option>
+            {% for op in cd['operations'] %}
+              <option value="{{op}}">{{op}}</option>
+            {% endfor %}
+          </select>
+          {% if cd['type'] == 'int' %}
+            {% set input_type = 'number' %}
+          {% elif cd['type'] == 'str' %}
+            {% set input_type = 'text' %}
+          {% elif cd['type'] == 'datetime' %}
+            {% set input_type = 'datetime-local' %}
+          {% else %}
+            {% set input_type = 'text' %}
+          {% endif %}
+          <input type="{{input_type}}" id="cond_t_{{loop.index0}}" placeholder="검색어 입력">
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+  <button id="get-grid" class="btn-search" onclick="getGridData()">조회 실행</button>
+</div>
+{% endif %}
+
+<div class="grid-wrapper">
+  <table id="list_jq"></table>
+  <div id="pager"></div>
+</div>
+
+<div class="overlay">
+  <div class="spinner"></div>
+</div>
+
+<script>
+
+  var excel_label_a  = [];
+  var excel_header_a = [];
+  var excel_width_a = [];
+  var grid_header_a  = [];
+  var conditions  = [];
+  
+  /*
+  {% for i in range(display_column_labels|length) %}
+  excel_header_a.push('{{display_column_names[i]}}')
+  excel_label_a.push('{{display_column_labels[i]}}')
+  var tmp_{{i}} = new Object();
+  tmp_{{i}}.name  = '{{display_column_names[i]}}'
+  tmp_{{i}}.label = '{{display_column_labels[i]}}'
+  grid_header_a.push(tmp_{{i}})
+  {% endfor %}
+  
+  grid_header_a = [
+        {name:'server_name', label:'Server 이름'},
+        {name:'host_id', label:'HOST ID'},
+        {name:'landscape', label:'개발/운영'},
+        {name:'ip_address', label:'ip address'}
+      ];
+  */
+  var sheet_name = '';  
+  var file_name = '';
+  var page_dblclick = '';
+  var rows_per_page = 25;
+  var obj;
+  var param = "{{param}}";
+  var grid_url = "/api/v1/grid/table";
+  var gridlist_url = "/api/v1/grid/gridlist";
+  var page_url = "{{url}}";
+  
+  console.log('mwm:',param)
+
+  $(document).on({
+    ajaxStart: function(){
+      $('body').addClass("loading");
+    },
+    ajaxStop: function(){
+      $('body').removeClass("loading");
+    }
+  })
+  if(param.length){
+    $.ajax({
+        url: grid_url + '/' + param + '?cmd=nodata',
+        success: function(data){
+
+          obj = data.list;
+          var str_obj = JSON.stringify(obj)
+          str_obj = str_obj.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+          obj = JSON.parse(str_obj)
+
+          excel_label_a = data.labels;
+          excel_header_a = data.columns;
+          excel_width_a = data.widths;
+          //conditions = data.conditions
+
+          //console.log('mwm conditions :',conditions);
+
+          //for(let i = 0; i < conditions.length; i++){
+          //  $('#condition').append("<span id=\"condition_"+ String(i) + "\" value=\""+conditions[i].name+"\"></span>")
+          //  $('#condition_'+String(i)).append("<label>"+conditions[i].name+"</label>")
+          //  $('#condition_'+String(i)).append("<input type=\"text\" id=\"condition_i"+String(i)+"\" list=\"condition_d"+String(i)+"\" ></input>")
+          //  $('#condition_'+String(i)).append("<datalist id=\"condition_d"+String(i)+"\"></datalist>")
+          //  for(let j = 0; j < conditions[i].operations.length; j++){
+          //    $('#condition_d'+String(i)).append("<option value=\""+conditions[i].operations[j]+"\">"+conditions[i].operations[j]+"</option>")
+          //  }
+          //  $('#condition_'+String(i)).append("<input type=\"text\" id=\"condition_t"+String(i)+"\" ></input>")
+          //}
+
+          for(let i = 0; i < excel_header_a.length; i++){
+            var tmp = new Object();
+            tmp.name  = excel_header_a[i];
+            tmp.label = excel_label_a[i];
+            tmp.width = excel_width_a[i];
+            grid_header_a.push(tmp);
+          }
+
+          var tmp2 = new Object();
+          tmp2.name = 'id';
+          tmp2.hidden = true;
+          grid_header_a.push(tmp2);
+
+          //document.getElementById('json-content').innerHTML = JSON.stringify(obj);
+          console.log(grid_header_a)
+          sheet_name = data.title;
+          file_name  = data.file_name;
+          rows_per_page = data.rows_per_page;
+          page_dblclick = data.page_dblclick
+        },
+        complete: function(){
+          drawJQ();
+          document.getElementById('export').style.display = "block";
+        }
+      });
+  }
+  $.ajax({
+    url: gridlist_url,
+    success: function(data){
+      var objTmp = data.list
+      $(objTmp).each(function(key, item){
+        $('#grid-selector').append("<option data-value='"+item.pk+"' value='"+item.value+"'></option>");
+      });
+    }
+  });
+  $('#grid-selector_i').on('click', function(){
+    this.setAttribute('value','');
+    this.focus();
+  });
+  $('#grid-selector_i').on('input', function(){
+    //initVal();
+    var param1 = document.querySelector("#grid-selector option[value='"+ this.value +"']").dataset.value;
+    location.href = page_url + "/" + param1
+  });
+  function makeParam(){
+    var param_cond = ''
+    $("[id^='cond_d_']").each(function(){
+        var idx = this.id.replace('cond_d_', '');
+        var col = this.getAttribute('column');
+        if (this.value){
+          var param = this.value+'__'+col+'='+document.getElementById('cond_t_'+idx).value;
+          if (param_cond){
+            param_cond = param_cond + '&' + param;
+          }else{ 
+            param_cond = param;
+          }
+          console.log('oper:',this.value+"__"+col);
+        }
+    });
+    if(param_cond){
+      param_cond = '?' + param_cond
+    }
+    return param_cond
+  }
+  function getGridData(){
+    var param_cond = makeParam()
+    console.log('param_cond : ', param_cond)
+    $.ajax({
+        url: grid_url + '/' + param + param_cond,
+        success: function(data){
+
+          obj = data.list;
+          var str_obj = JSON.stringify(obj)
+          str_obj = str_obj.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+          obj = JSON.parse(str_obj)
+
+        },
+        complete: function(){
+          drawJQ();
+        }
+    });
+  };
+  function drawJQ(){
+    $('#list_jq').clearGridData();
+    $('#list_jq').jqGrid({
+      url:'',
+      datatype: 'local',
+      //autowidth:true,
+      //shrinkToFit:true,
+      //styleUI: 'Foundations',
+      data: obj,
+      colModel:grid_header_a,
+      caption:sheet_name,
+      height: 'auto',
+      rowNum: rows_per_page,
+      loadonce:false,
+      loadui:'enable',
+      pager: '#pager',
+      loadComplete : function(data){
+        document.getElementById('pager_left').innerHTML = "전체 건수 : " + data.records;
+      },
+      ondblClickRow : function(rowid){
+        var row = $(this).getRowData(rowid);
+        if(page_dblclick){
+          let a = document.createElement('a');
+          a.target = '_blank';
+          a.href = page_dblclick + row['id'];
+          a.click();
+        }
+      }
+    });
+    $('#list_jq').setGridParam({
+      url:'',
+      datatype: 'local',
+      //autowidth:true,
+      //shrinkToFit:true,
+      //styleUI: 'Foundations',
+      data: obj,
+      colModel:grid_header_a,
+      caption:sheet_name,
+      height: 'auto',
+      rowNum: rows_per_page,
+      loadonce:false,
+      pager: '#pager',
+      loadComplete : function(data){
+        document.getElementById('pager_left').innerHTML = "전체 건수 : " + data.records;
+      }
+    }).trigger("reloadGrid");
+    $('#list_jq').jqGrid('filterToolbar', {
+      autosearch: true,
+      stringResult: true,
+      searchOnEnter: true
+    });
+  };
+  $('#export').on('click', function(){
+    data = obj;
+    var ws = XLSX.utils.aoa_to_sheet([excel_label_a]);
+    //ws['!cols'] = [{wch:10},{wch:30},{wch:60}]
+    XLSX.utils.sheet_add_json(ws, data, {header:excel_header_a, skipHeader:true, origin:"A2"});
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheet_name);
+    XLSX.writeFile(wb, file_name + '_' + moment(Date.now()).format('YYYY.MM.DD_HH.mm') + '.xlsx');
+  });
+
+  {% for cd in condition %}
+  $("#cond_d_{{cd['name']}}").on('input', function(){
+    console.log(this.value)
+    //var val = document.querySelector("#cond_d_{{cd['name']}} option[value='"+ this.value +"']").dataset.value;
+    this.setAttribute('value', this.value)
+  });
+  {% endfor %}
+</script>
+</body>
+</html>
+	
+{% endblock %}

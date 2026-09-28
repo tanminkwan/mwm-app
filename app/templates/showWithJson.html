@@ -1,0 +1,87 @@
+{% extends "appbuilder/base.html" %}
+{% import 'appbuilder/general/lib.html' as lib %}
+
+{% block content %}
+<script src="/static/js/jquery.json-viewer.js"></script>
+<script src="/static/js/jquery.bpopup.min.js"></script>
+<script src="/static/js/jquery-ui.min.js"></script>
+<script src="/static/js/jquery.flowchart.js"></script>
+
+<link href="/static/css/jquery.json-viewer.css" type="text/css" rel="stylesheet" />
+<link href="/static/css/jquery.bpopup.css" type="text/css" rel="stylesheet" />
+<link href="/static/css/jquery.flowchart.css" type="text/css" rel="stylesheet" />
+<script>
+    function renderJson(id,title) {
+        try {
+            //var input = $("[id='"+id+"']").html();
+            var input = eval('('+$("[id='"+id+"']").html().replace(/None/g, 'null')+')');
+            //var input = JSON.stringify({'aaa':'bbb'});
+            //var input = "{\'aaa\':\'bbb\'}";
+        }
+        catch (error) {
+            return alert("Cannot eval JSON: " + error);
+        }
+        $('#json-renderer').jsonViewer(input, "");
+        $('#json-title').text("["+title+"]");
+    };
+</script>
+<div id="element_to_pop_up">
+    <a class="b-close">x</a>
+    <div id="json-title" style="font-size:25px;font-weight:bold;color:blue;">Loading</div>
+    <pre id="json-renderer"></pre>
+</div>
+<script>
+    ;(function($) {
+        $(function() {
+            $('[id="json-button"]').bind('click', function(e) {
+                e.preventDefault();
+                $('#element_to_pop_up').bPopup({
+                    follow: [false, false],
+                    position: [150, 100]
+                });
+            });
+         });
+     })(jQuery);
+</script>
+
+
+{{ lib.panel_begin(title, "show") }}
+
+<div style="line-height: 150%;padding-bottom: 15px;">
+    {% for ml in buttonList %}
+    <button id="{{ml['id']}}" onclick="{{ml['onclick']}}">{{ml['text']}}</button>
+    {% endfor %}
+</div>
+
+{% if related_views is defined %}
+    <ul class="nav nav-tabs"  style="{{"display: none;" if not related_views else "" }}">
+    <li class="active"><a href="#Home" data-toggle="tab">{{ _("Detail") }}</a> </li>
+        {% for view in related_views %}
+            <li>
+                <a href="#{{view.__class__.__name__}}" data-toggle="tab">{{view.title}}</a>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <div class="tab-content">
+    {% for view in related_views %}
+        <div id="{{view.__class__.__name__}}" class="tab-pane">
+            {{ widgets.get('related_views')[loop.index - 1](pk = pk)|safe }}
+        </div>
+    {% endfor %}
+{% endif %}
+
+{% block show_form %}
+    <div id="Home" class="tab-pane active">
+        {{ widgets.get('show')()|safe }}
+    </div>
+{% endblock show_form %}
+
+{% if related_views is defined %}</div>{% endif %}
+{{ lib.panel_end() }}
+
+{% endblock content %}
+
+{% block add_tail_js %}
+<script src="{{url_for('appbuilder.static',filename='js/ab_keep_tab.js')}}"></script>
+{% endblock %}

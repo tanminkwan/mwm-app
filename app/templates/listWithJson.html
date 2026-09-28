@@ -1,0 +1,469 @@
+{% extends "appbuilder/base.html" %}
+{% import 'appbuilder/general/lib.html' as lib %}
+
+{% block content %}
+<script src="/static/js/jquery.json-viewer.js"></script>
+<script src="/static/js/jquery.bpopup.min.js"></script>
+<script src="/static/js/jquery-ui.min.js"></script>
+<script src="/static/js/jquery.flowchart.js"></script>
+<script src="/static/js/moment.js"></script>
+
+<link href="/static/css/jquery.json-viewer.css" type="text/css" rel="stylesheet" />
+<link href="/static/css/jquery.bpopup.css" type="text/css" rel="stylesheet" />
+<link href="/static/css/jquery.flowchart.css" type="text/css" rel="stylesheet" />
+<style>
+    [id^="toggle"] {
+        background-color: #fee;
+    }
+
+    input[type="text"] {
+        background-color: #eff;
+    }
+
+    #diagram-renderer {
+        overflow: auto;
+    }
+</style>
+<script>
+    function get3MinBefore() {
+        var d = new Date(Date.now() - 1000 * 3 * 60);
+        var d_str = moment(d).format('YYYY-MM-DD+HH:mm:ss');
+        return d_str;
+    }
+    function getHtml(param1, param2, param3, param4) {
+        $.ajax({
+            url: "/json/htmlviewer/" + param1 + "/" + param2 + "/" + param3 + "/" + param4,
+            success: function (data) {
+                renderHtml(data.html)
+                $('#html-title').html("[" + data.title + "]");
+            }
+        });
+    };
+    function renderHtml(data1) {
+        try {
+            var input = data1;
+        }
+        catch (error) {
+            return alert("Cannot eval JSON: " + error);
+        }
+        $('#html-renderer').html(input);
+    };
+    function getJson(param1, param2) {
+        $.ajax({
+            url: "/json/jsonviewer/" + param1 + "/" + param2,
+            success: function (data) {
+                renderJson(data.json)
+                $('#json-title').text("[" + param2 + "]");
+            }
+        });
+    };
+    function renderJson(data1) {
+        try {
+            var input = data1;
+        }
+        catch (error) {
+            return alert("Cannot eval JSON: " + error);
+        }
+        $('#json-renderer').jsonViewer(input, "");
+    };
+    function getChart(param1, param2) {
+        $.ajax({
+            url: "/json/relationship/" + param1 + "/" + param2,
+            success: function (data) {
+                drawDiagram(data.json)
+                $('#diagram-title').text("[" + param2 + "]");
+            }
+        });
+    };
+    function drawDiagram(data1) {
+
+        //        var jdata = JSON.parse(data1)
+        var jdata = data1
+        $('#diagram-renderer').flowchart({
+            data: jdata,
+            defaultLinkColor: '#0000dd',
+            defaultSelectedLinkColor: '#ff0000',
+            linkWidth: 1,
+            grid: 15,
+            multipleLinksOnInput: true,
+            multipleLinksOnOutput: true
+        });
+        $('#diagram-renderer').flowchart('setData', jdata);
+        
+        // [mwm] 'NO' 상태 인스턴스 색상 변경 (라이브러리 수정 방지용)
+        $('.flowchart-operator-connector-label').each(function() {
+            if ($(this).text().indexOf('\u200D') !== -1) {
+                $(this).css('color', 'gray');
+            }
+        });
+    };
+    function deleteObject() {
+        $('#diagram-renderer').flowchart('deleteSelected');
+    };
+</script>
+<div id="html_to_pop_up">
+    <a class="b-close">x</a>
+    <div id="html-title" style="font-size:25px;font-weight:bold;color:blue;">Loading!</div>
+    <pre id="html-renderer"></pre>
+</div>
+<div id="element_to_pop_up">
+    <a class="b-close">x</a>
+    <div id="json-title" style="font-size:25px;font-weight:bold;color:blue;">Loading</div>
+    <pre id="json-renderer"></pre>
+</div>
+<div id="diagram_to_pop_up">
+    <a class="b-close">x</a>
+    <div>
+        <div id="diagram-title" style="float: left;font-size:25px;font-weight:bold;color:blue;">Loading</div>
+        <div style="float: right;"><button id="diagram-delete-button" onclick="deleteObject()"
+                style="font-size:20px;">Object 삭제</button></div>
+    </div>
+    <div id="diagram-renderer" style="min-width:1400px;height:2000px;border: 1px solid black;"></div>
+</div>
+{{ lib.panel_begin(title) }}
+<div style="line-height: 150%;padding-bottom: 15px;">
+    {# if uiurl #}
+    <!--span style="display: none;" id="uiurl">{{uiurl}}</span-->
+    <!--button onclick="location.href='{{uiurl}}'">전체조회</button-->
+    <button onclick="window.location=window.location.pathname">전체조회</button>
+    {# endif #}
+
+    {% set current_group = {'val':''} %}
+    {% for ml in buttonList %}
+
+    {% if current_group.val != ml['bt_group'] %}
+    <span style="display: none;" id="bt_group_{{ml['bt_group']}}" data-value=""></span>
+    <span style="padding: 10px"></span>
+    {% endif %}
+    {% if current_group.update({'val':ml['bt_group']}) %}{% endif %}
+    <button id="{{ml['id']}}" onclick="callFilter('{{ml['id']}}','{{ml['onclick']}}')"
+        bt_group="bt_group_{{ml['bt_group']}}" filter="{{ml['onclick']}}">{{ml['text']}}</button>
+
+    {% endfor %}
+    {% for sl in selectList %}
+    {% if sl['id'] == 'tag-selector' %}
+    <label for="tag{{selectList.index(sl)}}">{{sl['text']}}</label>
+    <span style="display: none;" id="tag{{selectList.index(sl)}}-selector_t"></span>
+    <input list="tag{{selectList.index(sl)}}-selector" id="tag{{selectList.index(sl)}}-selector_i"
+        combind="{{sl['combind']}}" type="{{sl['type']}}" data-value="">
+    <datalist style="height: 27px;" id="tag{{selectList.index(sl)}}-selector">
+    </datalist>
+    {% else %}
+    <label for="{{sl['id']}}">{{sl['text']}}</label>
+    <span style="display: none;" id="{{sl['id']}}_t"></span>
+    <input list="{{sl['id']}}" id="{{sl['id']}}_i" combind="{{sl['combind']}}" type="{{sl['type']}}" data-value="">
+    <datalist style="height: 27px;" id="{{sl['id']}}">
+    </datalist>
+    {% endif %}
+    {% endfor %}
+    <span style="padding: 10px"></span>
+    {% for il in inputList %}
+    <label for="{{il['id']}}">{{il['text']}}</label>
+    <input type="text" id="{{il['id']}}_input_i" condition="{{il['condition']}}" combind="{{il['combind']}}"
+        size="{{il['size']}}">
+    <span style="padding: 10px"></span>
+    {% endfor %}
+</div>
+
+{% block list_search scoped %}
+{% call lib.accordion_tag("accordion1",_("Search"), False) %}
+{{ widgets.get('search')()|safe }}
+{% endcall %}
+{% endblock %}
+
+{% block list_list scoped %}
+<div>
+    {{ widgets.get('list')()|safe }}
+</div>
+{% endblock %}
+
+{{ lib.panel_end() }}
+<script>
+
+    //HTML Viewer popup
+    ; (function ($) {
+        $(function () {
+            $('[id="html-button"]').bind('click', function (e) {
+                e.preventDefault();
+                $('#html_to_pop_up').bPopup({
+                    follow: [false, false],
+                    position: [150, 100]
+                });
+            });
+        });
+    })(jQuery);
+    //JSON Viewer popup
+    ; (function ($) {
+        $(function () {
+            $('[id="json-button"]').bind('click', function (e) {
+                e.preventDefault();
+                $('#element_to_pop_up').bPopup({
+                    follow: [false, false],
+                    position: [150, 100]
+                });
+            });
+        });
+    })(jQuery);
+    //관계도 popup
+    ; (function ($) {
+        $(function () {
+            $('[id="dia-button"]').bind('click', function (e) {
+                e.preventDefault();
+                $('#diagram_to_pop_up').bPopup({
+                    follow: [false, false],
+                    position: [150, 100]
+                });
+            });
+        });
+    })(jQuery);
+
+    {% for sl in selectList %}
+
+    //Select 정의
+    {% if sl['id'] == 'biz-selector' %}
+    {% set arr = { 'name': 'biz', 'url': '/api/v1/model/column_all/mw_biz_category.biz_category', 'filter1': '_flt_0_mw_biz_category=', 'filter2': '_flt_0_biz_category=' } %}
+    {% elif sl['id'] == 'host-selector' %}
+    {% set arr = { 'name': 'host', 'url': '/api/v1/mw_server/list', 'filter1': '_flt_0_mw_server=', 'filter2': '_flt_0_host_id=' } %}
+    {% elif sl['id'] == 'agent-selector' %}
+    {% set arr = { 'name': 'agent', 'url': '/api/v1/model/column_all/ag_agent.agent_id', 'filter1': '_flt_0_mw_agent=', 'filter2': '_flt_0_agent_id=' } %}
+    {% elif sl['id'] == 'app-selector' %}
+    {% set arr = { 'name': 'app', 'url': '/api/v1/model/column_all/mw_app_master.app_id', 'filter1': '_flt_0_mw_app_master=', 'filter2': '_flt_0_app_id=' } %}
+    {% elif sl['id'] == 'tag-selector' %}
+    {% set arr = { 'name': 'tag' + selectList.index(sl) | string, 'url': '/api/v1/model/column_all/ut_tag.tag', 'filter1': '_flt_0_ut_tag=', 'filter2': '_flt_0_tag=' } %}
+    {% endif %}
+
+    {% if sl.get('condition') %}
+    var condition = '?condition=' + '{{sl['condition']|tojson}}'
+    {% else %}
+    var condition = ''
+    {% endif %}
+    $('#{{arr.name}}-selector_i').on('click', function () {
+        this.setAttribute('value', '');
+        this.focus();
+    });
+
+    $('#{{arr.name}}-selector_i').on('input', function () {
+
+        var val = this.value
+        var combind = this.getAttribute('combind')
+        var type = this.getAttribute('type')
+        var val2 = document.querySelector("#{{arr.name}}-selector option[value='" + val + "']").dataset.value;
+        var val3 = window.location.pathname
+        var filter = ''
+
+        if (val2 == '0') {
+            //location.href = val3;
+            filter = '';
+        } else if (type == 'parent') {
+            //location.href = val3 + '?_flt_0_mw_server='+val2;
+            filter = '{{arr.filter1}}' + val2;
+        } else {
+            //location.href = val3 + '?_flt_0_host_id='+val;
+            filter = '{{arr.filter2}}' + val;
+        }
+
+        this.setAttribute('data-value', filter);
+
+        if (combind == '1') {
+            callFilter();
+        } else {
+            location.href = '?' + filter;
+        }
+
+    });
+
+    if ($('#{{arr.name}}-selector_i').length) {
+
+        $.ajax({
+            url: "{{arr.url}}" + condition,
+            success: function (data) {
+                var obj = data.list || data;
+                $('#{{arr.name}}-selector').append("<option data-value='0' value='전체'></option>");
+                $(obj).each(function (key, item) {
+                    var pk = item.pk !== undefined ? item.pk : item.id;
+                    var value = item.value !== undefined ? item.value : item.host_id;
+                    $('#{{arr.name}}-selector').append("<option data-value='" + pk + "' value='" + value + "'></option>");
+                });
+            },
+            complete: function () {
+
+                var param = document.location.search;
+
+                var cond1 = '{{arr.filter1}}';
+                var cond2 = '{{arr.filter2}}';
+
+                var inx1 = param.indexOf(cond1);
+                var inx2 = param.indexOf(cond2);
+
+                var thisParam = ''
+                if (inx1 >= 0) {
+                    var del = param.indexOf('&', inx1);
+                    if (del > 1) {
+                        thisParam = param.substring(inx1, del)
+                    } else {
+                        thisParam = param.substring(inx1)
+                    }
+                } else if (inx2 >= 0) {
+                    var del = param.indexOf('&', inx2);
+                    if (del > 1) {
+                        thisParam = param.substring(inx2, del)
+                    } else {
+                        thisParam = param.substring(inx2)
+                    }
+                }
+
+                document.getElementById('{{arr.name}}-selector_i').setAttribute('data-value', thisParam)
+
+                var val = thisParam.replace(cond1, '');
+                val = val.replace(cond2, '');
+
+                var valtoSet = '';
+                if (Number.isInteger(parseInt(val))) {
+
+                    valtoSet = document.querySelector("#{{arr.name}}-selector option[data-value='" + val + "']").value;
+
+                } else {
+                    valtoSet = val;
+                }
+                document.getElementById('{{arr.name}}-selector_i').setAttribute('value', decodeURI(valtoSet))
+            }
+        });
+
+    }
+
+    {% endfor %}
+
+    {% for il in inputList %}
+    $("#{{il['id']}}_input_i").keyup(function (e) {
+        if (e.keyCode == 13) {
+            var cond = this.getAttribute('condition');
+            //var uiurl = document.getElementById('uiurl').innerHTML;
+            var uiurl = window.location.pathname;
+            var combind = this.getAttribute('combind')
+            var filter = cond + this.value;
+            this.setAttribute('data-value', filter);
+
+            if (combind == '1') {
+                callFilter();
+            } else {
+                location.href = '?' + filter;
+            }
+
+            e.preventDefault();
+        }
+    });
+    // [mwm] Initialize input fields from URL
+    (function () {
+        var cond = "{{il['condition']}}";
+        var prefix = cond.split('=')[0];
+        var params = new URLSearchParams(window.location.search);
+        var val = params.get(prefix);
+        if (val) {
+            var el = document.getElementById("{{il['id']}}_input_i");
+            if (el) {
+                el.value = val;
+                el.setAttribute('data-value', cond + val);
+            }
+        }
+    })();
+    {% endfor %}
+
+
+
+
+    if (document.location.search.length) {
+        var search = document.location.search;
+        $("[id^='toggle_bt']").each(function () {
+            var filter = this.getAttribute('filter');
+            if (filter == null || filter == "") return;
+
+            // [mwm] Check if every part of the button's filter is present in the URL
+            var parts = filter.split('&');
+            var allMatch = true;
+            for (var i = 0; i < parts.length; i++) {
+                if (!search.includes(parts[i])) {
+                    allMatch = false;
+                    break;
+                }
+            }
+
+            if (allMatch) {
+                var groupId = this.getAttribute('bt_group');
+                var obj = document.getElementById(groupId);
+                if (obj) {
+                    obj.setAttribute('data-value', filter);
+                }
+                this.style.color = "blue";
+            } else {
+                this.style.color = "red";
+            }
+        });
+    }
+
+    function callFilter(id, filter) {
+
+        if (typeof id !== "undefined") {
+
+            var obj = document.getElementById(id);
+            var group = obj.getAttribute('bt_group')
+
+            $("[id^='bt_group_']").each(function () {
+
+                if (this.id == group) {
+
+                    if (this.getAttribute('data-value') == filter) {
+                        this.setAttribute('data-value', "");
+                    } else {
+                        this.setAttribute('data-value', filter);
+                    }
+
+                }
+            });
+
+        }
+
+        //var uiurl = document.getElementById('uiurl').innerHTML;
+        var uiurl = window.location.pathname;
+
+        var param_str = ""
+
+        $("[id^='bt_group_']").each(function () {
+            if (this.getAttribute('data-value') != "") {
+                if (param_str == "") {
+                    param_str = this.getAttribute('data-value')
+                } else {
+                    param_str = param_str + '&' + this.getAttribute('data-value')
+                }
+            }
+        });
+
+        $("[id$='selector_i']").each(function () {
+            if (this.getAttribute('data-value') != "") {
+                if (param_str == "") {
+                    param_str = this.getAttribute('data-value')
+                } else {
+                    param_str = param_str + '&' + this.getAttribute('data-value')
+                }
+            }
+        });
+
+        $("[id$='input_i']").each(function () {
+            if (this.getAttribute('data-value') != "" && this.getAttribute('data-value') != null) {
+                if (param_str == "") {
+                    param_str = this.getAttribute('data-value')
+                } else {
+                    param_str = param_str + '&' + this.getAttribute('data-value')
+                }
+            }
+        });
+
+
+        if (param_str != "") {
+            param_str = '?' + param_str
+        }
+
+        location.href = uiurl + param_str;
+
+    }
+</script>
+{% endblock %}

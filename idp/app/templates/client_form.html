@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ action }} Client - {{ app_title | default('IDP Admin') }}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+        .form-container {
+            width: 100%;
+            max-width: 580px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .header {
+            margin-bottom: 32px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(to right, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .header p { color: #94a3b8; font-size: 14px; }
+
+        .form-group { margin-bottom: 24px; }
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #cbd5e1;
+            letter-spacing: 0.5px;
+        }
+        .form-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: white;
+            font-size: 15px;
+            transition: all 0.2s;
+            outline: none;
+        }
+        .form-input:focus {
+            border-color: #3b82f6;
+            background: rgba(0, 0, 0, 0.3);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+        }
+        .form-input::placeholder { color: #475569; }
+
+        .help-text {
+            display: block;
+            margin-top: 6px;
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 32px;
+        }
+        .btn {
+            flex: 1;
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+        .btn-submit { background: #2563eb; color: white; }
+        .btn-submit:hover { background: #3b82f6; transform: translateY(-2px); box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
+        .btn-cancel { background: rgba(255, 255, 255, 0.05); color: #94a3b8; }
+        .btn-cancel:hover { background: rgba(255, 255, 255, 0.1); color: white; }
+
+        /* Animation */
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .form-container { animation: fadeIn 0.4s ease-out; }
+
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <div class="header">
+            <h1>{{ action }} Client</h1>
+            <p>OAuth2 클라이언트 상세 정보를 입력해주세요.</p>
+        </div>
+
+        <form method="POST">
+            <div class="form-group">
+                <label class="form-label" for="client_id">CLIENT ID</label>
+                <input type="text" id="client_id" name="client_id" class="form-input" placeholder="e.g. my-awesome-app" value="{{ client.client_id if client else '' }}" required>
+                <span class="help-text">고유한 클라이언트 식별자입니다.</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="client_secret">CLIENT SECRET</label>
+                <input type="text" id="client_secret" name="client_secret" class="form-input" placeholder="Strong secret key" value="{{ client.client_secret if client else '' }}" required>
+                <span class="help-text">클라이언트 인증을 위한 비밀 키입니다.</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="client_name">CLIENT NAME</label>
+                <input type="text" id="client_name" name="client_name" class="form-input" placeholder="App Display Name" value="{{ client.client_name if client else '' }}" required>
+                <span class="help-text">사용자에게 표시될 애플리케이션 이름입니다.</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="redirect_uris">REDIRECT URIs</label>
+                <textarea id="redirect_uris" name="redirect_uris" class="form-input" placeholder="http://localhost:8000/callback" rows="3" required>{{ client.redirect_uris if client else '' }}</textarea>
+                <span class="help-text">인증 후 돌아올 주소입니다. (공백으로 구분하여 여러 개 입력 가능)</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="policy_mapping">POLICY MAPPING (JSON)</label>
+                <textarea id="policy_mapping" name="policy_mapping" class="form-input" placeholder='{"Admin": "consoleAdmin", "User": "readwrite"}' rows="2">{{ (client.policy_mapping | tojson) if client and client.policy_mapping else '{}' }}</textarea>
+                <span class="help-text">역할(IDP)을 정책(Service)으로 매핑합니다. JSON 형식으로 입력하세요.</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="grant_types">GRANT TYPES</label>
+                <input type="text" id="grant_types" name="grant_types" class="form-input" placeholder="e.g. authorization_code refresh_token" value="{{ client.grant_types if client else 'authorization_code refresh_token' }}" required>
+                <span class="help-text">허용할 OAuth2 권한 부여 방식입니다. (공백 구분)</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="scope">SCOPE</label>
+                <input type="text" id="scope" name="scope" class="form-input" placeholder="e.g. openid profile email groups" value="{{ client.scope if client else 'openid profile email' }}" required>
+                <span class="help-text">허용할 데이터 접근 범위입니다. (공백 구분, MinIO는 groups 필수)</span>
+            </div>
+
+            <div class="btn-row">
+                <a href="{{ url_for('auth.client_list') }}" class="btn btn-cancel">
+                    <i class="fas fa-times"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-submit">
+                    <i class="fas fa-save"></i> {{ action }} Client
+                </button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

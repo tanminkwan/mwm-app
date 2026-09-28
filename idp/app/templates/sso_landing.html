@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logging in... - {{ app_title }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0f172a;
+            color: #f8fafc;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 3px solid #1e293b;
+            border-radius: 50%;
+            display: inline-block;
+            position: relative;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+            margin-bottom: 24px;
+        }
+
+        .loader::after {
+            content: '';
+            box-sizing: border-box;
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #38bdf8;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        @keyframes rotation {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #f1f5f9;
+        }
+
+        p {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        .btn-manual {
+            margin-top: 32px;
+            display: inline-block;
+            font-size: 13px;
+            color: #38bdf8;
+            text-decoration: none;
+            border: 1px solid rgba(56, 189, 248, 0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+
+        .btn-manual:hover {
+            background: rgba(56, 189, 248, 0.1);
+        }
+    </style>
+    <!-- 1초 후 자동 리다이렉트 -->
+    <meta http-equiv="refresh" content="1.0;url={{ target_url }}">
+</head>
+
+<body>
+    <div class="container">
+        <span class="loader"></span>
+        <h1>{{ username }}님, 반갑습니다</h1>
+        <p>서비스로 안전하게 연결 중입니다...</p>
+
+        <a href="{{ target_url }}" class="btn-manual">이동이 늦어지면 여기를 클릭하세요</a>
+    </div>
+
+    <script>
+        // JS를 이용한 예비 리다이렉트
+        setTimeout(function () {
+            window.location.href = "{{ target_url | safe }}";
+        }, 1000);
+    </script>
+</body>
+
+</html>

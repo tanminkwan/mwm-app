@@ -1,0 +1,261 @@
+{% extends "appbuilder/base.html" %}
+{% block content %}
+<link rel="stylesheet" href="/static/css/toastui-editor.min.css" />
+<link rel="stylesheet" href="/static/css/toastui-editor-plugin-table-merged-cell.min.css" />
+<link rel="stylesheet" href="/static/css/tui-color-picker.min.css" />
+<link rel="stylesheet" href="/static/css/toastui-editor-plugin-color-syntax.min.css" />
+<link rel="stylesheet" href="/static/css/prism.min.css" />
+<link rel="stylesheet" href="/static/css/toastui-editor-plugin-code-syntax-highlight.min.css" />
+<link rel="stylesheet" href="/static/css/toastui-chart.min.css" />
+<script src="/static/js/toastui-editor-all.min.js"></script>
+<script src="/static/js/toastui-editor-plugin-table-merged-cell.min.js"></script>
+<script src="/static/js/toastui-editor-plugin-uml.min.js"></script>
+<script src="/static/js/tui-color-picker.min.js"></script>
+<script src="/static/js/toastui-editor-plugin-color-syntax.min.js"></script>
+<script src="/static/js/prism.min.js"></script>
+<script src="/static/js/prism-clojure.min.js"></script>
+<script src="/static/js/toastui-editor-plugin-code-syntax-highlight-all.min.js"></script>
+<script src="/static/js/toastui-chart.min.js"></script>
+<script src="/static/js/toastui-editor-plugin-chart.min.js"></script>
+<script src="/static/js/mermaid.min.js"></script>
+<script src="/static/js/toastui-editor-plugin-mermaid.js"></script>
+<style>
+    table,
+    th,
+    td {
+        border: 4px solid white;
+    }
+
+    th,
+    td {
+        background-color: white;
+        border: 1px solid gray;
+    }
+
+    #content {
+        background-color: white;
+        border: 1px solid gray;
+    }
+</style>
+<div class="well well-sm">
+    <a onclick="history.back()" class="btn btn-sm btn-default" data-toggle="tooltip" rel="tooltip" title=""
+        data-original-title="뒤로">
+        <i class="fa fa-arrow-left"></i>
+    </a>
+    <a href="{{update_page}}" class="btn btn-sm btn-default" data-toggle="tooltip" rel="tooltip" title=""
+        data-original-title="레코드 수정">
+        <i class="fa fa-edit"></i>
+    </a>
+    <a onclick="this.href='data:text/html;charset=UTF-8,'+encodeURIComponent(document.getElementById('toast-viewer').innerHTML)"
+        href="#" download="{{title}}.html" class="btn btn-sm btn-default">Download(HTML)
+        <i class="fa fa-chevron-down"></i>
+    </a>
+    <a onclick="this.href='data:text/html;charset=UTF-8,'+encodeURIComponent(document.getElementById('content_md').innerText)"
+        href="#" download="{{title}}.md" class="btn btn-sm btn-default">Download(markdown)
+        <i class="fa fa-chevron-down"></i>
+    </a>
+    <a onclick="openEmailModal()" class="btn btn-sm btn-primary" data-toggle="tooltip" rel="tooltip" title=""
+        data-original-title="이메일 발송" style="color:white;">
+        <i class="fa fa-envelope"></i> Send Email
+    </a>
+</div>
+
+<!-- Email Modal -->
+<div id="emailModal"
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999;">
+    <div
+        style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; border-radius:8px; padding:25px; min-width:500px; max-width:600px; box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+        <h4 style="margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">
+            <i class="fa fa-envelope"></i> 이메일 발송
+        </h4>
+        <div style="margin-bottom:15px;">
+            <label style="font-weight:bold; display:block; margin-bottom:5px;">이메일 Tag 선택</label>
+            <select id="emailTagSelect" multiple="multiple" style="width:100%;">
+            </select>
+        </div>
+        <div style="margin-bottom:15px;">
+            <label style="font-weight:bold; display:block; margin-bottom:5px;">직접 입력 (쉼표로 구분)</label>
+            <input type="text" id="emailManualInput" placeholder="user1@example.com, user2@example.com"
+                style="width:100%; border:1px solid #ccc; border-radius:4px; padding:8px; box-sizing:border-box;">
+        </div>
+        <div id="emailResult" style="display:none; margin-bottom:10px; padding:8px; border-radius:4px;"></div>
+        <div style="text-align:right;">
+            <button onclick="closeEmailModal()" class="btn btn-default">닫기</button>
+            <button onclick="sendEmail()" class="btn btn-primary" id="emailSendBtn">
+                <i class="fa fa-paper-plane"></i> 발송
+            </button>
+        </div>
+    </div>
+</div>
+<table id=content-table style="width: 100%;">
+    <tr>
+        <th>
+            <h2>{{title}}</h2>
+        </th>
+    </tr>
+    {% if update_on %}
+    <tr>
+        <th>
+            <p style="color: blue;">update date : {{update_on}}</p>
+        </th>
+    </tr>
+    {% endif %}
+    <tr>
+        <td>
+            {% if copy %}
+            <button onclick="copy()">Copy</button>
+            {% endif %}
+            <div id=content>
+                <textarea id=content_md style="border: solid 10px white;">{{md}}</textarea>
+            </div>
+        </td>
+    </tr>
+    {% if files|length > 0 %}
+    <tr>
+        <th>
+            <p>[첨부파일]</p>
+            {% for f in files %}
+            <p><a href="/common/download/{{f['file']}}">{{f['file_name']}}</a></p>
+            {% endfor %}
+        </th>
+    </tr>
+    {% endif %}
+
+</table>
+<div class="well well-sm">
+    <a onclick="history.back()" class="btn btn-sm btn-default" data-toggle="tooltip" rel="tooltip" title=""
+        data-original-title="뒤로">
+        <i class="fa fa-arrow-left"></i>
+    </a>
+    <a href="{{update_page}}" class="btn btn-sm btn-default" data-toggle="tooltip" rel="tooltip" title=""
+        data-original-title="레코드 수정">
+        <i class="fa fa-edit"></i>
+    </a>
+    <a onclick="this.href='data:text/html;charset=UTF-8,'+encodeURIComponent(document.getElementById('toast-viewer').innerHTML)"
+        href="#" download="{{title}}.html" class="btn btn-sm btn-default">Download(HTML)
+        <i class="fa fa-chevron-down"></i>
+    </a>
+    <a onclick="this.href='data:text/html;charset=UTF-8,'+encodeURIComponent(document.getElementById('content_md').innerText)"
+        href="#" download="{{title}}.md" class="btn btn-sm btn-default">Download(markdown)
+        <i class="fa fa-chevron-down"></i>
+    </a>
+</div>
+<script>
+    $(document).ready(function () {
+
+        var content_md = document.getElementById("content_md");
+        content_md.style = "display: none;"
+        var div_content = document.createElement('div');
+        div_content.id = "toast-viewer";
+        content_md.parentNode.insertBefore(div_content, content_md);
+        var initial_content = content_md.value;
+
+        const { Editor } = toastui;
+        const { tableMergedCell, uml, colorSyntax, codeSyntaxHighlight, chart } = Editor.plugin;
+        const mermaidPlugin = toastui.Editor.plugin.mermaid;
+        const umlOptions = {
+            rendererURL: '{{plantuml_url}}'
+        }
+
+        const viewer = Editor.factory({
+            el: document.querySelector('#toast-viewer'),
+            viewer: true,
+            height: '1000px',
+            initialValue: initial_content,
+            plugins: [tableMergedCell, [uml, umlOptions], codeSyntaxHighlight, chart, mermaidPlugin]
+        });
+
+    });
+    function copy() {
+        var r = document.createRange();
+        r.selectNode(document.getElementById("content-html"));
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(r);
+        document.execCommand('copy');
+        window.getSelection().removeAllRanges();
+    }
+
+    function openEmailModal() {
+        document.getElementById('emailModal').style.display = 'block';
+        document.getElementById('emailResult').style.display = 'none';
+        document.getElementById('emailSendBtn').disabled = false;
+        // Load email tags
+        $.ajax({
+            url: '/ut/email_tags',
+            success: function (data) {
+                var sel = $('#emailTagSelect');
+                sel.empty();
+                data.tags.forEach(function (t) {
+                    sel.append($('<option>', {
+                        value: t.tag,
+                        text: t.tag + ' (' + t.emails + ')'
+                    }));
+                });
+                sel.select2({
+                    placeholder: '이메일 Tag를 검색/선택하세요',
+                    allowClear: true,
+                    width: '100%'
+                });
+            }
+        });
+    }
+
+    function closeEmailModal() {
+        if ($('#emailTagSelect').data('select2')) {
+            $('#emailTagSelect').select2('destroy');
+        }
+        document.getElementById('emailModal').style.display = 'none';
+    }
+
+    function sendEmail() {
+        var sel = document.getElementById('emailTagSelect');
+        var tagNames = [];
+        for (var i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].selected) {
+                tagNames.push(sel.options[i].value);
+            }
+        }
+        var manualEmails = document.getElementById('emailManualInput').value;
+
+        if (tagNames.length === 0 && !manualEmails.trim()) {
+            var resultDiv = document.getElementById('emailResult');
+            resultDiv.style.display = 'block';
+            resultDiv.style.background = '#fff3cd';
+            resultDiv.style.color = '#856404';
+            resultDiv.innerHTML = '발송 대상을 선택하거나 입력해주세요.';
+            return;
+        }
+
+        document.getElementById('emailSendBtn').disabled = true;
+        document.getElementById('emailSendBtn').innerHTML = '<i class="fa fa-spinner fa-spin"></i> 발송중...';
+
+        $.ajax({
+            url: '/ut/mdcontent/{{content_id}}/send_email',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                tag_names: tagNames,
+                manual_emails: manualEmails
+            }),
+            success: function (data) {
+                var resultDiv = document.getElementById('emailResult');
+                resultDiv.style.display = 'block';
+                resultDiv.style.background = '#d4edda';
+                resultDiv.style.color = '#155724';
+                resultDiv.innerHTML = '<i class="fa fa-check"></i> ' + data.message + '<br><small>' + data.emails.join(', ') + '</small>';
+                document.getElementById('emailSendBtn').innerHTML = '<i class="fa fa-check"></i> 완료';
+            },
+            error: function (xhr) {
+                var resultDiv = document.getElementById('emailResult');
+                resultDiv.style.display = 'block';
+                resultDiv.style.background = '#f8d7da';
+                resultDiv.style.color = '#721c24';
+                var msg = xhr.responseJSON ? xhr.responseJSON.error : '발송 실패';
+                resultDiv.innerHTML = '<i class="fa fa-times"></i> ' + msg;
+                document.getElementById('emailSendBtn').disabled = false;
+                document.getElementById('emailSendBtn').innerHTML = '<i class="fa fa-paper-plane"></i> 발송';
+            }
+        });
+    }
+</script>
+{% endblock %}

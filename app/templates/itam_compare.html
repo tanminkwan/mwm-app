@@ -1,0 +1,313 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div class="panel panel-primary">
+    <div class="panel-heading">
+        <h3 class="panel-title">
+            <i class="fa fa-exchange"></i> ITAM 대사 실행
+        </h3>
+    </div>
+    <div class="panel-body">
+        <p>ITAM 데이터와 미들웨어관리소 데이터 간의 정합성을 비교(대사)합니다.</p>
+        <button id="btn-run-all" class="btn btn-primary btn-lg" onclick="runAllCompare()">
+            <i class="fa fa-play"></i> 일괄 대사 실행
+        </button>
+        <span id="loading-spinner" style="display:none; margin-left:10px;">
+            <i class="fa fa-spinner fa-spin fa-lg"></i> 대사 실행 중...
+        </span>
+    </div>
+</div>
+
+<div id="result-summary" style="display:none;">
+    <div class="alert alert-success">
+        <h4><i class="fa fa-check-circle"></i> 대사 완료</h4>
+        <div id="summary-content"></div>
+    </div>
+</div>
+
+<!-- 탭 구성 -->
+<ul class="nav nav-tabs" role="tablist">
+    <li role="presentation" class="active">
+        <a href="#tab-itam-was" role="tab" data-toggle="tab">
+            ITAM WAS 기준 <span class="badge" id="badge-itam-was">0</span>
+        </a>
+    </li>
+    <li role="presentation">
+        <a href="#tab-itam-web" role="tab" data-toggle="tab">
+            ITAM WEB 기준 <span class="badge" id="badge-itam-web">0</span>
+        </a>
+    </li>
+    <li role="presentation">
+        <a href="#tab-leebalso-was" role="tab" data-toggle="tab">
+            미들웨어관리소 WAS 기준 <span class="badge" id="badge-leebalso-was">0</span>
+        </a>
+    </li>
+    <li role="presentation">
+        <a href="#tab-leebalso-web" role="tab" data-toggle="tab">
+            미들웨어관리소 WEB 기준 <span class="badge" id="badge-leebalso-web">0</span>
+        </a>
+    </li>
+</ul>
+
+<div class="tab-content" style="margin-top: 10px;">
+    <!-- ITAM WAS 기준 -->
+    <div role="tabpanel" class="tab-pane active" id="tab-itam-was">
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered table-hover table-condensed" id="table-itam-was">
+                <thead>
+                    <tr>
+                        <th>구성번호</th>
+                        <th>호스트</th>
+                        <th>운용환경</th>
+                        <th>도메인명</th>
+                        <th>구성명</th>
+                        <th>설치계정</th>
+                        <th>WAS SSL</th>
+                        <th>OS</th>
+                        <th>오류 항목</th>
+                        <th>오류 내용</th>
+                        <th>조치</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ITAM WEB 기준 -->
+    <div role="tabpanel" class="tab-pane" id="tab-itam-web">
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered table-hover table-condensed" id="table-itam-web">
+                <thead>
+                    <tr>
+                        <th>구성번호</th>
+                        <th>호스트</th>
+                        <th>포트</th>
+                        <th>구성명</th>
+                        <th>SSL</th>
+                        <th>운용환경</th>
+                        <th>설치계정</th>
+                        <th>OS</th>
+                        <th>Webtob버전</th>
+                        <th>오류 항목</th>
+                        <th>오류 내용</th>
+                        <th>조치</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 미들웨어관리소 WAS 기준 -->
+    <div role="tabpanel" class="tab-pane" id="tab-leebalso-was">
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered table-hover table-condensed" id="table-leebalso-was">
+                <thead>
+                    <tr>
+                        <th>호스트</th>
+                        <th>Landscape</th>
+                        <th>WAS ID</th>
+                        <th>WAS 이름</th>
+                        <th>설치계정</th>
+                        <th>OS</th>
+                        <th>오류 항목</th>
+                        <th>오류 내용</th>
+                        <th>조치</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 미들웨어관리소 WEB 기준 -->
+    <div role="tabpanel" class="tab-pane" id="tab-leebalso-web">
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered table-hover table-condensed" id="table-leebalso-web">
+                <thead>
+                    <tr>
+                        <th>호스트</th>
+                        <th>포트</th>
+                        <th>WEB 이름</th>
+                        <th>SSL</th>
+                        <th>Landscape</th>
+                        <th>설치계정</th>
+                        <th>OS</th>
+                        <th>버전</th>
+                        <th>오류 항목</th>
+                        <th>오류 내용</th>
+                        <th>조치</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    var csrfToken = "{{ csrf_token }}";
+
+    function runAllCompare() {
+        var btn = document.getElementById('btn-run-all');
+        var spinner = document.getElementById('loading-spinner');
+        var resultDiv = document.getElementById('result-summary');
+
+        btn.disabled = true;
+        spinner.style.display = 'inline';
+        resultDiv.style.display = 'none';
+
+        fetch('/api/v1/itam-compare/run-all', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            credentials: 'same-origin'
+        })
+            .then(function (response) { return response.json(); })
+            .then(function (data) {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+
+                if (data.summary) {
+                    var s = data.summary;
+                    var html = '<table class="table table-condensed" style="width:auto;">';
+                    html += '<tr><td>ITAM WAS 기준</td><td><strong>' + s.itam_was + '</strong>건</td></tr>';
+                    html += '<tr><td>ITAM 내장WEB 기준</td><td><strong>' + s.itam_embed_web + '</strong>건</td></tr>';
+                    html += '<tr><td>ITAM WEB 기준</td><td><strong>' + s.itam_web + '</strong>건</td></tr>';
+                    html += '<tr><td>미들웨어관리소 WAS 기준</td><td><strong>' + s.leebalso_was + '</strong>건</td></tr>';
+                    html += '<tr><td>미들웨어관리소 내장WEB 기준</td><td><strong>' + s.leebalso_embed_web + '</strong>건</td></tr>';
+                    html += '<tr><td>미들웨어관리소 WEB 기준</td><td><strong>' + s.leebalso_web + '</strong>건</td></tr>';
+                    html += '<tr style="font-weight:bold;"><td>합계</td><td>' + s.total + '건</td></tr>';
+                    html += '</table>';
+                    document.getElementById('summary-content').innerHTML = html;
+                    resultDiv.style.display = 'block';
+                    loadResults();
+                }
+            })
+            .catch(function (err) {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+                alert('대사 실행 중 오류가 발생했습니다: ' + err);
+            });
+    }
+
+    function v(val) { return val != null ? val : ''; }
+
+    function loadResults() {
+        loadItamWasResults();
+        loadItamWebResults();
+        loadLeebalsoWasResults();
+        loadLeebalsoWebResults();
+    }
+
+    function loadItamWasResults() {
+        fetch('/api/v1/itam-compare/results/itam-was', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var tbody = document.querySelector('#table-itam-was tbody');
+                tbody.innerHTML = '';
+                document.getElementById('badge-itam-was').textContent = data.length;
+                data.forEach(function (r) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML =
+                        '<td>' + v(r.config_id) + '</td>' +
+                        '<td>' + v(r.host_id) + '</td>' +
+                        '<td>' + v(r.run_env) + '</td>' +
+                        '<td>' + v(r.domain_name) + '</td>' +
+                        '<td>' + v(r.config_name) + '</td>' +
+                        '<td>' + v(r.install_user) + '</td>' +
+                        '<td>' + v(r.was_ssl_yn) + '</td>' +
+                        '<td>' + v(r.os_type) + '</td>' +
+                        '<td><span class="label label-danger">' + r.error_type + '</span></td>' +
+                        '<td>' + v(r.error_content) + '</td>' +
+                        '<td>' + v(r.action_yn) + '</td>';
+                    tbody.appendChild(tr);
+                });
+            });
+    }
+
+    function loadItamWebResults() {
+        fetch('/api/v1/itam-compare/results/itam-web', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var tbody = document.querySelector('#table-itam-web tbody');
+                tbody.innerHTML = '';
+                document.getElementById('badge-itam-web').textContent = data.length;
+                data.forEach(function (r) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML =
+                        '<td>' + v(r.config_id) + '</td>' +
+                        '<td>' + v(r.host_id) + '</td>' +
+                        '<td>' + v(r.node_port) + '</td>' +
+                        '<td>' + v(r.config_name) + '</td>' +
+                        '<td>' + v(r.ssl_yn) + '</td>' +
+                        '<td>' + v(r.run_env) + '</td>' +
+                        '<td>' + v(r.install_user) + '</td>' +
+                        '<td>' + v(r.os_type) + '</td>' +
+                        '<td>' + v(r.webtob_version) + '</td>' +
+                        '<td><span class="label label-warning">' + r.error_type + '</span></td>' +
+                        '<td>' + v(r.error_content) + '</td>' +
+                        '<td>' + v(r.action_yn) + '</td>';
+                    tbody.appendChild(tr);
+                });
+            });
+    }
+
+    function loadLeebalsoWasResults() {
+        fetch('/api/v1/itam-compare/results/leebalso-was', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var tbody = document.querySelector('#table-leebalso-was tbody');
+                tbody.innerHTML = '';
+                document.getElementById('badge-leebalso-was').textContent = data.length;
+                data.forEach(function (r) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML =
+                        '<td>' + v(r.located_host_id) + '</td>' +
+                        '<td>' + v(r.landscape) + '</td>' +
+                        '<td>' + v(r.was_id) + '</td>' +
+                        '<td>' + v(r.was_name) + '</td>' +
+                        '<td>' + v(r.sys_user) + '</td>' +
+                        '<td>' + v(r.os_type) + '</td>' +
+                        '<td><span class="label label-info">' + r.error_type + '</span></td>' +
+                        '<td>' + v(r.error_content) + '</td>' +
+                        '<td>' + v(r.action_yn) + '</td>';
+                    tbody.appendChild(tr);
+                });
+            });
+    }
+
+    function loadLeebalsoWebResults() {
+        fetch('/api/v1/itam-compare/results/leebalso-web', { credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                var tbody = document.querySelector('#table-leebalso-web tbody');
+                tbody.innerHTML = '';
+                document.getElementById('badge-leebalso-web').textContent = data.length;
+                data.forEach(function (r) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML =
+                        '<td>' + v(r.host_id) + '</td>' +
+                        '<td>' + v(r.port) + '</td>' +
+                        '<td>' + v(r.web_name) + '</td>' +
+                        '<td>' + v(r.ssl_yn) + '</td>' +
+                        '<td>' + v(r.landscape) + '</td>' +
+                        '<td>' + v(r.sys_user) + '</td>' +
+                        '<td>' + v(r.os_type) + '</td>' +
+                        '<td>' + v(r.version_info) + '</td>' +
+                        '<td><span class="label label-default">' + r.error_type + '</span></td>' +
+                        '<td>' + v(r.error_content) + '</td>' +
+                        '<td>' + v(r.action_yn) + '</td>';
+                    tbody.appendChild(tr);
+                });
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        loadResults();
+    });
+</script>
+{% endblock %}

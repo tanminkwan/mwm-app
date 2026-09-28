@@ -1,0 +1,54 @@
+{% extends "appbuilder/base.html" %}
+{% import 'appbuilder/general/lib.html' as lib %}
+{% block content %}
+<link rel="stylesheet" href="/static/css/simplemde.min.css" />
+<script src="/static/js/simplemde.min.js"></script>
+<link rel="stylesheet" href="/static/css/tagify.css" />
+<script src="/static/js/tagify.js"></script>
+<style>
+    .tagify__tag  {
+        background-color:#D6EAF8;
+    }
+</style>
+{{ lib.panel_begin(title) }}
+
+{% block add_form %}
+    {{ widgets.get('add')(form_action=form_action)|safe }}
+{% endblock %}
+
+{{ lib.panel_end() }}
+<script>
+$(document).ready(function() {
+	//여기 아래 부분
+    var smd = new SimpleMDE({ element: document.getElementById("{{summer_column}}")});
+	//smd.codemirror.options.readOnly = true;
+});
+{% if tags_column|length > 0 %}
+
+var input = document.querySelector('input[id={{tags_column}}]');
+tagify = new Tagify(input);
+tagify.on('change', function(e){
+	var str = ''
+	if(e.detail.value!=""){
+		var obj = JSON.parse(e.detail.value);
+		$(obj).each(function(index, value){
+			console.log(index,':',value.value);
+			if(str == ''){
+				str = value.value;
+			}else{
+				str = str + ', ' + value.value;
+			}
+		});
+	}
+	console.log('str :',str);
+	input.setAttribute('value',str);
+});
+var thisForm = document.getElementById('model_form');
+thisForm.onsubmit = function(){
+	input.value = input.getAttribute("value");
+	thisForm.submit();
+}
+
+{% endif %}
+</script>
+{% endblock %}

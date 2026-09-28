@@ -1,0 +1,42 @@
+# Dependabot 설정
+#
+# 목적: 워크플로가 SHA 로 핀 고정한 GitHub Action 을 자동으로 추적한다.
+#
+# 핀 고정은 태그 재지정 공격을 막지만, 자동 갱신이 없으면 **취약점이 고쳐진
+# 새 버전이 나와도 옛 커밋에 묶인 채 낡는다.** 핀 고정과 이 파일은 한 묶음이다.
+#
+# ⚠ Dependabot 은 이 파일을 **기본 브랜치(main)에서만** 읽는다.
+#   작업 브랜치에 올려둔 동안에는 동작하지 않고, main 에 병합된 뒤부터 돈다.
+#
+
+version: 2
+
+updates:
+  - package-ecosystem: "github-actions"
+    # github-actions 생태계에서 "/" 는 .github/workflows 전체를 뜻한다.
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Seoul"
+    # 액션 갱신을 PR 하나로 묶는다. 3개뿐이라 따로 열 이유가 없다.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
+
+  # --- 아래 둘은 의도적으로 켜지 않았다 ---------------------------------
+  #
+  # pip (requirements.txt)
+  #   WS-2-3 이 진행 중이라 Flask-AppBuilder 4.5.3 / Flask 2.3.3 / SQLAlchemy 1.4
+  #   를 **일부러 붙잡고 있다.** 지금 켜면 보류하기로 결정한 메이저 업그레이드
+  #   PR 이 쏟아진다. WS-2-3 종료 후 WS-2-6 에서 켠다.
+  #   그때까지 취약점 감시는 `pip-audit`(TASK 2-1 기준선)이 맡는다.
+  #
+  # docker (Dockerfile.base 의 python:3.12.4-slim-bookworm)
+  #   베이스 이미지 태그 정책 자체가 WS-2-5 의 미결 과제다.
+  #   정책을 정한 뒤 켠다.

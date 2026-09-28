@@ -1,0 +1,206 @@
+{% extends "appbuilder/base.html" %}
+{% import 'appbuilder/general/lib.html' as lib %}
+
+{% block content %}
+<link rel="stylesheet" href="/static/css/toastui-editor.min.css" />
+<link rel="stylesheet" href="/static/css/toastui-editor-plugin-table-merged-cell.min.css" />
+<link rel="stylesheet" href="/static/css/tui-color-picker.min.css" />
+<link rel="stylesheet" href="/static/css/toastui-editor-plugin-color-syntax.min.css" />
+<link rel="stylesheet" href="/static/css/prism.min.css" />
+<link rel="stylesheet" href="/static/css/toastui-editor-plugin-code-syntax-highlight.min.css" />
+<link rel="stylesheet" href="/static/css/toastui-chart.min.css" />
+<script src="/static/js/toastui-editor-all.min.js"></script>
+<script src="/static/js/toastui-editor-plugin-table-merged-cell.min.js"></script>
+<script src="/static/js/toastui-editor-plugin-uml.min.js"></script>
+<script src="/static/js/tui-color-picker.min.js"></script>
+<script src="/static/js/toastui-editor-plugin-color-syntax.min.js"></script>
+<script src="/static/js/prism.min.js"></script>
+<script src="/static/js/prism-clojure.min.js"></script>
+<script src="/static/js/toastui-editor-plugin-code-syntax-highlight-all.min.js"></script>
+<script src="/static/js/toastui-chart.min.js"></script>
+<script src="/static/js/toastui-editor-plugin-chart.min.js"></script>
+<script src="/static/js/mermaid.min.js"></script>
+<script src="/static/js/toastui-editor-plugin-mermaid.js"></script>
+<style>
+    .tagify__tag {
+        background-color: #D6EAF8;
+    }
+
+    .file-dropzone {
+        border: 2px dashed #ccc;
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        color: #888;
+        margin: 10px 0;
+        transition: all 0.3s;
+        background: #fafafa;
+    }
+
+    .file-dropzone.dragover {
+        border-color: #3498db;
+        background: #ebf5fb;
+        color: #2980b9;
+    }
+
+    .uploaded-file-item {
+        display: inline-block;
+        background: #e8f4fd;
+        border: 1px solid #bee5eb;
+        border-radius: 4px;
+        padding: 4px 10px;
+        margin: 3px 4px;
+        font-size: 13px;
+    }
+
+    .uploaded-file-item a {
+        color: #2c7be5;
+        text-decoration: none;
+    }
+</style>
+{{ lib.panel_begin(title, "edit") }}
+
+{% if related_views is defined %}
+<ul class="nav nav-tabs" style="{{" display: none;" if not related_views else "" }}">
+    <li class="active"><a href="#Home" data-toggle="tab">{{ _("Detail") }}</a> </li>
+    {% for view in related_views %}
+    <li><a href="#{{view.__class__.__name__}}" data-toggle="tab">{{view.title}}</a></li>
+    {% endfor %}
+</ul>
+
+<div class="tab-content">
+    {% for view in related_views %}
+    <div id="{{view.__class__.__name__}}" class="tab-pane">
+        {{ widgets.get('related_views')[loop.index - 1]()|safe }}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% block edit_form %}
+    <div id="Home" class="tab-pane active">
+        {{ widgets.get('edit')(form_action=form_action)|safe }}
+    </div>
+    {% endblock %}
+
+    {% if related_views is defined %}
+</div> {% endif %}
+
+{{ lib.panel_end() }}
+{% endblock %}
+
+{% block add_tail_js %}
+<script>
+    $(document).ready(function () {
+
+        var content_md = document.getElementById("content_md");
+        content_md.style = "display: none;"
+        var div_content = document.createElement('div');
+        div_content.id = "toast-editor";
+        content_md.parentNode.insertBefore(div_content, content_md);
+        var initial_content = content_md.value;
+
+        const { Editor } = toastui;
+        const { tableMergedCell, uml, colorSyntax, codeSyntaxHighlight, chart } = Editor.plugin;
+        const mermaidPlugin = toastui.Editor.plugin.mermaid;
+        const colorSyntaxOptions = {
+            preset: ['#FF0000', '#0000FF', '#808080', '#008000']
+        };
+        const umlOptions = {
+            rendererURL: '{{plantuml_url}}'
+        }
+
+        const editor = new Editor({
+            el: document.querySelector('#toast-editor'),
+            previewStyle: 'vertical',
+            height: '1000px',
+            initialEditType: 'markdown',
+            initialValue: initial_content,
+            events: {
+                change: f_onChanged
+            },
+            hooks: {
+                addImageBlobHook: function (blob, callback) {
+                    if (!blob.name) {
+                        blob.name = 'Pasted_Image_' + new Date().getTime() + '.png';
+                    }
+                    uploadFile(blob, callback);
+                }
+            },
+            plugins: [tableMergedCell, [uml, umlOptions], [colorSyntax, colorSyntaxOptions], codeSyntaxHighlight, chart, mermaidPlugin]
+        });
+
+        function f_onChanged() {
+            var text = editor.getMarkdown();
+            content_md.value = text;
+        }
+
+        // === Drag & Drop File Upload ===
+        var uploadedFileIds = [];
+        var hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.name = 'uploaded_file_ids';
+        hiddenInput.value = '';
+        var form = document.querySelector('form');
+        if (form) form.appendChild(hiddenInput);
+
+        var editorEl = document.getElementById('toast-editor');
+        var dropzone = document.createElement('div');
+        dropzone.className = 'file-dropzone';
+        dropzone.innerHTML = '<i class="fa fa-cloud-upload"></i> 파일을 여기에 드래그하여 첨부하세요';
+        editorEl.parentNode.insertBefore(dropzone, editorEl.nextSibling);
+
+        var fileListEl = document.createElement('div');
+        fileListEl.style = 'margin:8px 0;';
+        dropzone.parentNode.insertBefore(fileListEl, dropzone.nextSibling);
+
+        ['dragenter', 'dragover'].forEach(function (evt) {
+            dropzone.addEventListener(evt, function (e) { e.preventDefault(); dropzone.classList.add('dragover'); });
+        });
+        ['dragleave', 'drop'].forEach(function (evt) {
+            dropzone.addEventListener(evt, function (e) { e.preventDefault(); dropzone.classList.remove('dragover'); });
+        });
+        editorEl.addEventListener('dragover', function (e) { e.preventDefault(); dropzone.classList.add('dragover'); });
+        editorEl.addEventListener('dragleave', function (e) { e.preventDefault(); dropzone.classList.remove('dragover'); });
+        editorEl.addEventListener('drop', function (e) {
+            e.preventDefault(); dropzone.classList.remove('dragover');
+            if (e.dataTransfer && e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
+        });
+        dropzone.addEventListener('drop', function (e) {
+            if (e.dataTransfer && e.dataTransfer.files.length > 0) handleFiles(e.dataTransfer.files);
+        });
+
+        function handleFiles(files) { for (var i = 0; i < files.length; i++) uploadFile(files[i]); }
+
+        function uploadFile(file, callback) {
+            var fd = new FormData();
+            fd.append('file', file, file.name);
+            dropzone.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 업로드 중: ' + (file.name || '이미지');
+            $.ajax({
+                url: '/ut/upload_file', type: 'POST', data: fd,
+                processData: false, contentType: false,
+                success: function (data) {
+                    if (callback) {
+                        // Insert image markdown into editor only (don't add as attachment)
+                        callback(data.download_url, data.file_name);
+                    } else {
+                        // Display in file list and register as a document attachment
+                        uploadedFileIds.push(data.file_id);
+                        hiddenInput.value = uploadedFileIds.join(',');
+                        var item = '<span class="uploaded-file-item"><a href="' + data.download_url + '">📎 ' + data.file_name + '</a></span>';
+                        fileListEl.innerHTML += item;
+                    }
+                    dropzone.innerHTML = '<i class="fa fa-cloud-upload"></i> 파일을 여기에 드래그하여 첨부하세요';
+                },
+                error: function (xhr) {
+                    var msg = xhr.responseJSON ? xhr.responseJSON.error : '업로드 실패';
+                    alert('파일 업로드 실패: ' + msg);
+                    dropzone.innerHTML = '<i class="fa fa-cloud-upload"></i> 파일을 여기에 드래그하여 첨부하세요';
+                }
+            });
+        }
+
+    });
+
+</script>
+<script src="{{url_for('appbuilder.static',filename='js/ab_keep_tab.js')}}"></script>
+{% endblock %}

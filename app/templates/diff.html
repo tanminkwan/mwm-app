@@ -1,0 +1,64 @@
+{% extends "appbuilder/base.html" %}
+{% block content %}
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Diff</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/diff2html.min.css') }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #diff {
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>{{title}}</h1>
+    <div class="well well-sm">    
+        <a onclick="history.back()" class="btn btn-sm btn-default" data-toggle="tooltip" rel="tooltip" title="" data-original-title="뒤로">
+            <i class="fa fa-arrow-left"></i>
+        </a>
+    </div>
+    <div id="diff">
+    </div>
+    <div class="well well-sm">    
+        <a onclick="history.back()" class="btn btn-sm btn-default" data-toggle="tooltip" rel="tooltip" title="" data-original-title="뒤로">
+            <i class="fa fa-arrow-left"></i>
+        </a>
+    </div>
+    <script type="application/json" id="text1">{{ text1 | tojson | safe }}</script>
+    <script type="application/json" id="text2">{{ text2 | tojson | safe }}</script>
+
+    <script src="{{ url_for('static', filename='js/diff.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/diff2html.min.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            // JSON 데이터를 script 태그에서 안전하게 읽기
+            const text1 = JSON.parse(document.getElementById('text1').textContent);
+            const text2 = JSON.parse(document.getElementById('text2').textContent);
+
+            async function displayDiff() {
+                const diff = Diff.createPatch('text', text1, text2);
+                const diffHtml = Diff2Html.html(diff, { 
+                    drawFileList: false, 
+                    matching: 'lines', 
+                    outputFormat: 'side-by-side',
+                    showFiles: false,
+                    diffStyle: 'word',
+                    renderNothingWhenEmpty: false 
+                });
+                document.getElementById('diff').innerHTML = diffHtml;
+            }
+
+            displayDiff();
+        });
+    </script>
+</body>
+</html>
+
+{% endblock %}

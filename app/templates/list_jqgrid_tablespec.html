@@ -1,0 +1,259 @@
+{% extends "appbuilder/base.html" %}
+{% block content %}
+<html>
+<head>
+    <meta charset="utf-8" />
+    <link href="/static/css/jquery-ui.min.css" type="text/css" rel="stylesheet" />
+    <link href="/static/css/ui.jqgrid.css" type="text/css" rel="stylesheet" />
+    <script src="/static/js/jquery-ui.min.js"></script>
+    <script src="/static/js/moment.js"></script>
+    <script src="/static/js/grid.locale-kr.js"></script>
+    <script src="/static/js/jquery.jqGrid.min.js"></script> 
+    <script src="/static/js/xlsx.full.min.js"></script>
+</head>
+
+<style>
+  .ui-jqgrid tr.jqgrow td{
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    white-space: -moz-pre-wrap;
+    white-space: -pre-wrap;
+    overflow: hidden;
+    height:auto;
+    vertical-align: middle;
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+  .ui-th-column {
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    white-space: -moz-pre-wrap;
+    white-space: -pre-wrap;
+    overflow: hidden;
+    height:auto;
+    vertical-align: middle;
+    padding-top: 3px;
+    padding-bottom: 3px;
+    font-size: 10px;
+  }
+  #gbox_list_jq .ui-jqgrid-caption {
+    background-color:#a11d17;
+    color:white;
+  }
+  #gbox_list_jq_sub .ui-jqgrid-caption {
+    background-color:darkslategray;
+    color:white;
+  }
+  .ui-jqgrid-title {
+    font-size: 17px;
+  }
+  .ui-th-ltr, .ui-widget-content {
+    font-size: 13px;
+    background-color:#f5fffa;
+  }
+  #pg_pager {
+    font-size: 13px;
+  }
+  .overlay {
+    display: none;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    z-index: 999;
+    background: rgba(255,255,255,0.8) url("/static/css/images/loader2.gif") center no-repeat;
+  }
+  body{
+    text-align: center;
+  }
+  body.loading{
+    overflow: hidden;
+  }
+  body.loading .overlay {
+    display: block;
+  }
+</style>
+
+<body>
+<div style="line-height: 150%;padding-bottom: 15px;">
+  <label >Table 선택</label>
+  <input list="grid-selector" id="grid-selector_i">
+    <datalist style="height: 27px;" id="grid-selector">
+    </datalist>
+</div>
+<table id="list_jq">
+</table>
+<div style="height: 5px;"></div>
+<table id="list_jq_sub">
+</table>
+<div class="overlay"></div>
+
+<script>
+
+  var excel_label_a  = [];
+  var excel_header_a = [];
+  var grid_header_a  = [];
+  
+  {% for r in grid_header %}
+    var tmp = new Object();
+    tmp.name  = "{{r['name']}}";
+    tmp.label = "{{r['label']}}";
+    tmp.width = {{r['width']}};
+    grid_header_a.push(tmp);
+  {% endfor %}
+  
+  /*
+  grid_header_a = [
+        {name:'name', label:'Column 이름', width:200},
+        {name:'type', label:'Column Type', width:150},
+        {name:'comment', label:'Comment', width:300}
+      ];
+    */
+  var sheet_name = '';  
+  var file_name = '';
+  var page_dblclick = '';
+  var rows_per_page = 100;
+  var obj;
+  var gridlist_url = "{{tables}}";
+  var grid_url = "{{modelinfo}}";
+  
+  $(document).on({
+    ajaxStart: function(){
+      $('body').addClass("loading");
+    },
+    ajaxStop: function(){
+      $('body').removeClass("loading");
+    }
+  })
+
+  $.ajax({
+    url: gridlist_url,
+    success: function(data){
+      var objTmp = data.list
+      $(objTmp).each(function(key, item){
+        $('#grid-selector').append("<option data-value='"+item+"' value='"+item+"'></option>");
+      });
+    }
+  });
+
+  $('#grid-selector_i').on('click', function(){
+    this.setAttribute('value','');
+    this.focus();
+  });
+  $('#grid-selector_i').on('focus', function(){
+    this.value='';
+  });
+  $('#grid-selector_i').on('input', function(){
+    var param = document.querySelector("#grid-selector option[value='"+ this.value +"']").dataset.value;
+    getGridData(param,'main')
+  });
+
+  function getGridData(param, param2){
+    $.ajax({
+
+      url: grid_url + '/' + param,
+
+      success: function(data){
+          var dict = data.dict
+          file_name = dict.table_name
+          sheet_name = dict.table_name + '(' + dict.table_comment +')';
+          obj = dict.columns;
+          var str_obj = JSON.stringify(obj)
+          str_obj = str_obj.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+          obj = JSON.parse(str_obj)
+
+      },
+
+      complete: function(){
+        if(param2=='main'){
+          drawJQ('list_jq');
+          //document.getElementsByClassName('ui-pg-input')[0].focus();
+          if($('#gbox_list_jq_sub').length){
+            $('#gbox_list_jq_sub').hide()
+            $('#list_jq_sub').clearGridData();
+            document.getElementById('gbox_list_jq_sub').getElementsByClassName('ui-jqgrid-title')[0].innerHTML = ''
+          }
+          document.activeElement.blur();
+        }else{
+          drawJQ('list_jq_sub');
+          $('#gbox_list_jq_sub').show()
+        }
+      }
+    });
+  };
+
+  function drawJQ(target){
+    $('#'+target).clearGridData();
+    $('#'+target).jqGrid({
+      url:'',
+      datatype: 'local',
+      data: obj,
+      colModel:grid_header_a,
+      caption:sheet_name,
+      height: 'auto',
+      rowNum: rows_per_page,
+      loadonce:false,
+      loadui:'enable',
+      //loadComplete : function(data){
+      //  document.getElementById('pager_left').innerHTML = "전체 건수 : " + data.records;
+      //},
+      ondblClickRow : function(rowid){
+        var row = $(this).getRowData(rowid);
+        if(row['type']=='PARENT' || row['type']=='CHILD' || row['type']=='MbyN'){
+          getGridData(row['name'],'sub')
+        }
+      }
+
+    });
+    $('#'+target).setGridParam({
+      url:'',
+      datatype: 'local',
+      data: obj,
+      //colModel:grid_header_a,
+      //caption:sheet_name,
+      //height: 'auto',
+      rowNum: rows_per_page,
+      //loadonce:false,
+      //pager: '#pager',
+      loadComplete : function(data){
+
+        for(var i=0; i<=data.records; i++) {
+          var rowData = $('#'+target).jqGrid('getRowData', i+1);
+          if(rowData.type == 'PARENT'){
+            $('#'+target).jqGrid('setCell',i+1,'name','',{color:'blue','font-weight':'bold'})
+            $('#'+target).jqGrid('setCell',i+1,'type','',{color:'blue','font-weight':'bold'})
+            $('#'+target).jqGrid('setCell',i+1,'comment','',{color:'blue','font-weight':'bold'})
+          }else if(rowData.type == 'CHILD'){
+            $('#'+target).jqGrid('setCell',i+1,'name','',{color:'green','font-weight':'bold'})
+            $('#'+target).jqGrid('setCell',i+1,'type','',{color:'green','font-weight':'bold'})
+            $('#'+target).jqGrid('setCell',i+1,'comment','',{color:'green','font-weight':'bold'})
+          }else if(rowData.type == 'MbyN'){
+            $('#'+target).jqGrid('setCell',i+1,'name','',{color:'red','font-weight':'bold'})
+            $('#'+target).jqGrid('setCell',i+1,'type','',{color:'red','font-weight':'bold'})
+            $('#'+target).jqGrid('setCell',i+1,'comment','',{color:'red','font-weight':'bold'})
+          }else if(rowData.type == 'BIND FUNCTION'){
+            $('#'+target).jqGrid('setCell',i+1,'name','',{color:'brown','font-style':'italic'})
+            $('#'+target).jqGrid('setCell',i+1,'type','',{color:'brown','font-style':'italic'})
+            $('#'+target).jqGrid('setCell',i+1,'comment','',{color:'brown','font-style':'italic'})
+          }
+        }
+      }
+    }).trigger("reloadGrid");
+    //$('#'+target).jqGrid('filterToolbar', {
+    //  autosearch: true,
+    //  stringResult: true,
+    //  searchOnEnter: true
+    //});
+    document.getElementById('gbox_'+target).getElementsByClassName('ui-jqgrid-title')[0].innerHTML = sheet_name
+    //var title = $(newid).find('ui-jqgrid-title')
+    //console.log(newid, sheet_name)
+    //console.log(title)
+
+  };
+
+</script>
+</body>
+</html>
+	
+{% endblock %}

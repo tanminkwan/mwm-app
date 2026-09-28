@@ -1,0 +1,202 @@
+# MW App CI
+#
+# 프로젝트 규칙: build / test / 실행을 모두 Docker 로 한다 (HOWTO_001).
+# CI 도 배포와 같은 2단계 이미지를 만들고 그 컨테이너 안에서 테스트한다.
+
+name: CI
+
+on:
+  push:
+    branches: [ "main", "mwm-app-*" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint (Docker)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      # flake8 은 코드를 import 하지 않으므로 앱 의존성이 필요 없다.
+      # 앱 이미지를 빌드하지 않고 런타임과 같은 베이스 이미지에서 바로 돈다.
+      # 태그를 워크플로에 적어두면 Dockerfile.base 와 어긋나므로 파일에서 읽는다.
+      - name: Resolve base image
+        id: base
+        run: |
+          image=$(awk '/^FROM/ {print $2; exit}' Dockerfile.base)
+          echo "런타임 베이스 이미지: $image"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
+      - name: flake8
+        # 정책은 2단계다 (TASK 5-3). 설정은 .flake8 에서 읽는다.
+        #  1) 차단 검사 — 문법 오류·미정의 이름. 0건을 유지한다
+        #  2) 스타일 래칫 — 총계가 .flake8-baseline 을 넘으면 실패.
+        #     기존 위반은 용인하되 **새 위반은 막는다**
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src "${{ steps.base.outputs.image }}" sh -euc '
+            pip install --quiet --no-cache-dir -r requirements-dev.txt
+            flake8 --version
+
+            echo "--- 차단 검사: 문법 오류·미정의 이름 (E9, F63, F7, F82)"
+            flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+            echo "--- 스타일 위반 (코드별)"
+            flake8 . --count --exit-zero --statistics -q -q > /tmp/style.txt
+            cat /tmp/style.txt
+
+            count=$(tail -1 /tmp/style.txt)
+            baseline=$(grep -v "^#" .flake8-baseline | tr -d "[:space:]")
+            echo "--- 래칫: 위반 $count 건 / 기준선 $baseline 건"
+
+            if [ "$count" -gt "$baseline" ]; then
+              echo "::error::스타일 위반이 기준선보다 $((count - baseline))건 늘었습니다. 새로 추가한 코드를 정리하거나, 의도된 증가라면 .flake8-baseline 을 갱신하십시오."
+              exit 1
+            fi
+            if [ "$count" -lt "$baseline" ]; then
+              echo "::notice::위반이 $((baseline - count))건 줄었습니다. .flake8-baseline 을 $count 로 낮춰 커밋하면 래칫이 조여집니다."
+            fi
+          '
+
+  test:
+    name: Test (Docker)
+    runs-on: ubuntu-latest
+
+    # CI 전용 DB 비밀번호. 매번 새로 만드는 임시 DB 라 비밀이 아니다 — 운영 값과 분리한다 (TASK 1-3a)
+    env:
+      CI_DB_PASSWORD: ci-only-db-password
+
+    services:
+      postgres:
+        image: postgres:15.2-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      # --- 배포와 동일한 2단계 빌드 ---------------------------------------
+      # docker-compose.yml 은 이미지를 빌드하지 않는다 (TASK 1-4). 빌드는 여기의 docker build 로만 한다.
+      # base 를 건너뛰면 requirements.txt 변경이 반영되지 않는다.
+      - name: Build mwm-base
+        run: docker build -t mwm-base -f Dockerfile.base .
+
+      - name: Build mwm-app
+        run: docker build -t mwm-app -f Dockerfile.app .
+
+      # 테스트 러너는 운영 이미지에 없다(requirements-dev.txt). mwm-app 위에 얹는다.
+      - name: Build mwm-test
+        run: docker build -t mwm-test -f Dockerfile.test .
+
+      # mwm-test 는 mwm-app 을 FROM 하므로 테스트 대상은 여전히 배포 이미지다.
+      # 단, 테스트 도구 설치가 기존 패키지를 끌어올리면 그 전제가 깨진다.
+      # 추가는 허용하고 **버전 변경·제거는 실패**시킨다.
+      - name: Verify the test image left app dependencies untouched
+        run: |
+          docker run --rm mwm-app  pip freeze | sort > /tmp/freeze-app.txt
+          docker run --rm mwm-test pip freeze | sort > /tmp/freeze-test.txt
+          changed=$(comm -23 /tmp/freeze-app.txt /tmp/freeze-test.txt)
+          if [ -n "$changed" ]; then
+            echo "::error::테스트 도구 설치가 앱 의존성을 바꿨습니다:"
+            echo "$changed"
+            exit 1
+          fi
+          echo "추가된 패키지만 존재합니다:"
+          comm -13 /tmp/freeze-app.txt /tmp/freeze-test.txt
+
+      # --- DB 준비 --------------------------------------------------------
+      # 앱 계정에 CREATEDB 권한이 없다(TASK 5-2). superuser 로 미리 만든다.
+      - name: Create databases
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -v app_user=mwm -v app_password="$CI_DB_PASSWORD" -f create_db.sql
+          psql -h localhost -U postgres -tAc \
+            "SELECT datname FROM pg_database WHERE datname IN ('mw','mw_test') ORDER BY 1;"
+
+      # --- 테스트 ---------------------------------------------------------
+      # tests/ 와 pytest.ini 는 Dockerfile.app 이 COPY 하지 않으므로 마운트한다.
+      # services 는 러너 호스트에 포트를 게시하므로 --network host 로 닿는다.
+      # 커버리지도 함께 잰다. **아직 게이트가 아니다** — 기준선 추적용이며
+      # 하한선 강제는 WS-5-9 이다. 기준선과 해석은 TASK_5-4 문서 참조.
+      - name: Run pytest
+        run: |
+          docker run --rm --network host \
+            -v "$PWD/tests:/app/tests" \
+            -v "$PWD/pytest.ini:/app/pytest.ini:ro" \
+            -v "$PWD/.coveragerc:/app/.coveragerc:ro" \
+            -v "$PWD/coverage-out:/out" \
+            -e MWM_DATABASE_URI="postgresql://mwm:${CI_DB_PASSWORD}@localhost:5432/mw" \
+            -e REDIS_URL="redis://localhost:6379/0" \
+            mwm-test pytest -v --cov --cov-report=term --cov-report=json:/out/coverage.json
+
+      # 커버리지 게이트 (TASK 5-9). 기준선 아래로 떨어지면 **실패**한다.
+      # 요약 표는 job summary 에 남겨 PR 에서 바로 보이게 한다.
+      - name: Coverage gate
+        if: always()
+        run: |
+          [ -f coverage-out/coverage.json ] || { echo "커버리지 파일 없음 (테스트가 실패했다)"; exit 0; }
+          python3 - <<'PY'
+          import json, os, re, sys
+
+          t = json.load(open('coverage-out/coverage.json'))['totals']
+          base = dict(
+              (k, float(v)) for k, v in
+              re.findall(r'^(\w+)\s*=\s*([\d.]+)$', open('.coverage-baseline').read(), re.M))
+
+          LABELS = {'percent_covered': '라인+분기', 'percent_branches_covered': '분기'}
+          rows, failed, improved = [], [], []
+          for key, label in LABELS.items():
+              now, want = t[key], base[key]
+              ok = now >= want
+              rows.append(f"| {label} | **{now:.2f}%** | {want:.2f}% | {'통과' if ok else '**미달**'} |")
+              (improved if now >= want + 0.30 else []).append(f'{key} = {now:.2f}')
+              if not ok:
+                  failed.append(f'{label}: {now:.2f}% < 기준선 {want:.2f}%')
+
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              print('### 커버리지', file=f)
+              print('\n| 지표 | 현재 | 기준선 | |', file=f)
+              print('| :--- | ---: | ---: | :-- |', file=f)
+              for r in rows:
+                  print(r, file=f)
+              print(f"\n라인만 {t['percent_statements_covered']:.2f}% "
+                    f"(참고 — import 만으로 38% 가 채워진다. TASK 5-4 §4)", file=f)
+
+          for line in rows:
+              print(line)
+          if improved:
+              print('::notice::커버리지가 올랐습니다. .coverage-baseline 을 갱신하십시오 -> '
+                    + ' / '.join(improved))
+          if failed:
+              print('::error::커버리지가 기준선 아래로 떨어졌습니다 -- ' + ' / '.join(failed))
+              sys.exit(1)
+          PY
+
+      # --- 이미지 크기 기록 ------------------------------------------------
+      # 의존성이 다시 불어나는 것을 눈에 띄게 한다 (1.44GB -> 521MB 로 줄인 상태).
+      # 배포되는 것은 mwm-app 까지다. mwm-test 는 CI 전용이라 크기를 신경 쓰지 않는다.
+      - name: Report image sizes
+        if: always()
+        run: docker images --format '{{.Repository}}:{{.Tag}}  {{.Size}}' | grep '^mwm-'

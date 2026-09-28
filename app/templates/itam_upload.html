@@ -1,0 +1,35 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div class="panel panel-primary">
+    <div class="panel-heading">
+        <h3 class="panel-title">Excel 파일 업로드 (IT 구성정보)</h3>
+    </div>
+    <div class="panel-body">
+        <form action="{{ url_for('ItExcelImportView.upload') }}" method="post" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <div class="form-group">
+                <label for="type">데이터 유형</label>
+                <select name="type" id="type" class="form-control" required>
+                    <option value="was">IT WAS 구성정보</option>
+                    <option value="web">IT WEB 구성정보</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="file">엑셀 파일</label>
+                <input type="file" name="file" id="file" class="form-control" accept=".xlsx, .xls" required>
+            </div>
+            <button type="submit" class="btn btn-primary">업로드 및 데이터 임포트</button>
+        </form>
+    </div>
+</div>
+
+<div class="alert alert-info">
+    <h4><i class="fa fa-info-circle"></i> 업로드 안내</h4>
+    <ul>
+        <li>지원 형식: <strong>.xlsx, .xls</strong> (엑셀 파일)</li>
+        <li><strong>임포트 방식</strong>: 업로드 시 기존 테이블 데이터는 <strong>모두 삭제</strong>된 후 최신 파일 내용으로 대체됩니다.</li>
+        <li><strong>헤더 매핑</strong>: 엑셀 첫 번째 행의 컬럼명을 기준으로 자동 매핑됩니다.</li>
+    </ul>
+</div>
+{% endblock %}

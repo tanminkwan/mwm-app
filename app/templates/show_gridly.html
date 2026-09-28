@@ -1,0 +1,117 @@
+{% extends "appbuilder/base.html" %}
+{% block content %}
+<meta charset="utf-8" />
+<link href="/static/css/jquery.gridly.css" type="text/css" rel="stylesheet" />
+<link href="/static/css/sample.css" type="text/css" rel="stylesheet" />
+<style type="text/css">
+	.gridly{
+		position: relative;
+		width: 1400px;
+	}
+	.brick.small.newgen{
+		width: 125px;
+		height: 220px;
+	    background-color:aliceblue;
+	}
+	.brick.small.asis{
+		width: 125px;
+		height: 170px;
+	    background-color:aliceblue;
+	}
+	.brick.large{
+		width: 300px;
+		height: 300px;
+	    background-color:aliceblue;
+	}
+	.brick.title.newgen{
+	    background-color:#390F39;
+		color:#FFFFFF;
+		border-top: 4px solid transparent;
+		border-bottom: 4px solid transparent;
+		text-align: center;
+		font-size:11px;
+	}
+	.brick.title.asis{
+	    background-color:#B9770E;
+		color:#FFFFFF;
+		border-top: 4px solid transparent;
+		border-bottom: 4px solid transparent;
+		text-align: center;
+		font-size:11px;
+	}
+	#RUNNING {
+        background-color: #F9E79F;
+		color:#1B4F72;
+		text-align: center;
+    }
+	#STANDBY {
+        background-color: #34495E;
+		color:#FCF3CF;
+		text-align: center;
+    }
+	#SHUTDOWN {
+        background-color: #34495E;
+		color:#F5B7B1;
+		text-align: center;
+    }
+	#NO-DATA {
+        background-color: #FFFFFF;
+		color:#D5D8DC;
+		text-align: center;
+    }
+</style>
+<script src="/static/js/jquery.gridly.js"></script>
+<script src="/static/js/sample.js"></script>
+<h4 id="was-status-title">{{title}}</h4>
+<div class="gridly">
+</div>
+<script>
+    $(document).on({
+        ajaxStop: function(){
+		  console.log("ajaxStop");
+          $('.gridly').gridly({base: 70,gutter: 10,columns: 16});
+        }
+    })
+   // function wasStatus(){
+    $.ajax({
+        url: "/monitor/getWasStatus",
+            success: function(rdata){
+				var data = rdata['data']
+				var checked_time = rdata['checked_date']
+				document.getElementById("was-status-title").innerHTML += " ( 기준일시 : "+checked_time+")"
+				console.log("checked_time: " + checked_time)
+				const groups = data['GROUPS'];
+				groups.sort();
+				for (var i=0; i<groups.length; i++){
+					var group = groups[i];
+					if (group.startsWith("ASIS")){
+						$('.gridly').append('<div class="brick small asis"><div class="brick title asis">'+group+'</div><table id="'+group+'"></table></div>');
+					}else{
+						$('.gridly').append('<div class="brick small newgen"><div class="brick title newgen">'+group+'</div><table id="'+group+'"></table></div>');
+					}
+					
+				}
+				var keys = Object.keys(data)
+				for (var i=0; i<keys.length; i++){
+					var key = keys[i];
+					//console.log("Key: " + key + " Value: " + data[key]['WAS_INSTANCE_GROUP'])
+					if (key!="GROUPS"){
+						var status = "";
+						if("STATUS" in data[key]){
+							status = data[key]['STATUS'];
+						}else{
+							status = "NO-DATA";
+						}
+						var was_instance_group = data[key]['WAS_INSTANCE_GROUP']
+						//$('#'+was_instance_group).append('<p>'+data[key]['SERVER_NAME']+':'+status+'</p>')
+						document.getElementById(was_instance_group).innerHTML += 
+						'<tr style="font-size:11px;"><th>'+data[key]['SERVER_NAME']+'</th><th id="'+status+'">'+status+'</th></tr>';
+					}
+				}
+            }
+    });
+   // }
+   $('.gridly').gridly({base: 70,gutter: 10,columns: 16});
+</script>
+	
+{% endblock %}

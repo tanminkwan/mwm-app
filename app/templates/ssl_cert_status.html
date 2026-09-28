@@ -1,0 +1,287 @@
+{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+    :root {
+        --primary-color: #3b82f6;
+        --secondary-color: #6366f1;
+        --bg-color: #f8fafc;
+        --card-bg: #ffffff;
+        --text-main: #1e293b;
+        --text-muted: #64748b;
+        --border-color: #e2e8f0;
+        --danger-color: #ef4444;
+        --success-color: #10b981;
+        --warning-color: #f59e0b;
+        --radius: 12px;
+        --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    }
+
+    body {
+        background-color: var(--bg-color);
+        color: var(--text-main);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        line-height: 1.6;
+        font-size: 18px;
+    }
+
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 3rem;
+    }
+
+    header {
+        margin-bottom: 3.5rem;
+        text-align: center;
+    }
+
+    #main-title {
+        font-size: 3.8rem;
+        font-weight: 800;
+        color: var(--text-main);
+        letter-spacing: -0.025em;
+        margin-bottom: 1rem;
+    }
+
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 2.5rem;
+    }
+
+    .card {
+        background: var(--card-bg);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 2.5rem;
+        border: 1px solid var(--border-color);
+        transition: transform 0.2s ease;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+    }
+
+    .card-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        border-bottom: 2px solid var(--bg-color);
+        padding-bottom: 1.25rem;
+    }
+
+    .card-title h3 {
+        margin: 0;
+        font-size: 2.2rem;
+        font-weight: 800;
+        color: var(--secondary-color);
+    }
+
+    h4 {
+        font-size: 1.6rem;
+        color: var(--text-muted);
+        margin: 2.5rem 0 1.5rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 18px;
+    }
+
+    th {
+        background: var(--bg-color);
+        color: var(--text-muted);
+        font-weight: 600;
+        text-align: left;
+        padding: 16px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    td {
+        padding: 16px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-main);
+    }
+
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    tr:hover td {
+        background-color: #f1f5f9;
+    }
+
+    #certStat th, #certStatJeus th, #icaCertStat th, #icaCertStatJeus th {
+        border-top: 3px solid var(--warning-color);
+    }
+
+    .total-row td {
+        font-weight: 800 !important;
+        background-color: #f9fafb !important;
+        border-top: 2px solid var(--secondary-color) !important;
+        color: var(--secondary-color) !important;
+    }
+</style>
+
+<div class="container">
+    <header>
+        <h2 id="main-title">SSL / ICA 인증서 만료 현황</h2>
+        <p style="color: var(--text-muted);">Real-time Certificate Expiration Status</p>
+    </header>
+
+    <div class="dashboard-grid">
+        <!-- LEAF SSL Section -->
+        <div class="card" id="ssl-leaf-card">
+            <div class="card-title">
+                <h3>[LEAF인증서 만료 현황]</h3>
+            </div>
+            <div class="table-wrapper">
+                <h4>1) webtob 집계</h4>
+                <table id="certStat"></table>
+            </div>
+            <div class="table-wrapper" style="margin-top: 2rem;">
+                <h4>2) jeus https 집계</h4>
+                <table id="certStatJeus"></table>
+            </div>
+        </div>
+
+        <!-- ICA SSL Section -->
+        <div class="card" id="ssl-ica-card">
+            <div class="card-title">
+                <h3>[ICA인증서 만료 현황]</h3>
+            </div>
+            <div class="table-wrapper">
+                <h4>1) webtob 집계</h4>
+                <table id="icaCertStat"></table>
+            </div>
+            <div class="table-wrapper" style="margin-top: 2rem;">
+                <h4>2) jeus https 집계</h4>
+                <table id="icaCertStatJeus"></table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function() {
+    function formatDate(d) {
+        var day = ("0" + d.getDate()).slice(-2);
+        var month = ("0" + (d.getMonth() + 1)).slice(-2);
+        return month + "/" + day + "/" + d.getFullYear();
+    }
+
+    function gotoSSLList(status, type, is_ica) {
+        var url = "";
+        if (type === 'webtob') {
+            url = "/webdomainmodelview/list/?_flt_0_ssl_yn=YES";
+        } else {
+            url = "/washttplistenermodelview/list/?_flt_0_ssl_yn=YES";
+        }
+        
+        var now = new Date();
+        var d7 = new Date(); d7.setDate(now.getDate() + 7);
+        var d30 = new Date(); d30.setDate(now.getDate() + 30);
+        
+        var date_flt = "";
+        var col_name = "";
+        if (is_ica) {
+            col_name = (type === 'webtob') ? "notafter_ca" : "mw_etc_ssl_domain.notafter_ca";
+        } else {
+            col_name = (type === 'webtob') ? "notafter" : "mw_etc_ssl_domain.notafter";
+        }
+
+        if (status == '만료') {
+            date_flt = "&_flt_2_" + col_name + "=" + formatDate(now);
+        } else if (status == '임박') {
+            date_flt = "&_flt_1_" + col_name + "=" + formatDate(now) + "&_flt_2_" + col_name + "=" + formatDate(d7);
+        } else if (status == '주의') {
+            date_flt = "&_flt_1_" + col_name + "=" + formatDate(d7) + "&_flt_2_" + col_name + "=" + formatDate(d30);
+        } else if (status == '정상') {
+            date_flt = "&_flt_1_" + col_name + "=" + formatDate(d30);
+        } else if (status == '미확인') {
+            date_flt = "&_flt_0_" + col_name + "=y";
+        }
+        window.open(url + date_flt, '_blank');
+    }
+
+    function renderExpiryTable(tableId, stats, type, is_ica) {
+        var landscapes = ['PROD', 'TEST', 'DEV'];
+        var statuses = ['정상', '주의', '임박', '만료', '미확인', '전체'];
+        
+        var header = "<tr><th>상태</th>" + landscapes.map(l => "<th style='text-align:right;'>" + l + "</th>").join('') + "<th style='text-align:right;'>전체</th></tr>";
+        $('#' + tableId).html(header);
+
+        statuses.forEach(status => {
+            var item = stats.find(s => s.status === status);
+            if (!item) return;
+
+            if (status !== '정상' && status !== '전체' && item.total <= 0) {
+                return;
+            }
+
+            var isTotal = (status === '전체');
+            var rowClass = isTotal ? "class='total-row'" : "";
+            var rowStyle = isTotal ? "" : "style='cursor:pointer;'";
+            
+            var row = $("<tr " + rowClass + " " + rowStyle + "><td>" + status + "</td><td style='text-align:right;'>" + item.PROD + "</td><td style='text-align:right;'>" + item.TEST + "</td><td style='text-align:right;'>" + item.DEV + "</td><td style='text-align:right;'>" + item.total + "</td></tr>");
+            
+            if (!isTotal) {
+                row.click(function() { gotoSSLList(status, type, is_ica); });
+            }
+            $('#' + tableId).append(row);
+        });
+        
+        if (tableId === 'certStatJeus' || tableId === 'icaCertStatJeus') {
+            $('#' + tableId).after("<div style='font-size:12px;color:gray;margin-top:5px;'>* 임박: 만료 7일 이내, 주의: 만료 30일 이내</div>");
+        }
+    }
+
+    // LEAF Certs
+    $.ajax({
+        url: "/api/v1/monitor/cert_expiry_stat",
+        success: function (data) {
+            if (data && data.cert_expiry_stat) {
+                renderExpiryTable('certStat', data.cert_expiry_stat, 'webtob', false);
+            }
+        }
+    });
+
+    $.ajax({
+        url: "/api/v1/monitor/cert_expiry_stat_jeus",
+        success: function (data) {
+            if (data && data.cert_expiry_stat_jeus) {
+                renderExpiryTable('certStatJeus', data.cert_expiry_stat_jeus, 'jeus', false);
+            }
+        }
+    });
+
+    // ICA Certs
+    $.ajax({
+        url: "/api/v1/monitor/ica_cert_expiry_stat",
+        success: function (data) {
+            if (data && data.ica_cert_expiry_stat) {
+                renderExpiryTable('icaCertStat', data.ica_cert_expiry_stat, 'webtob', true);
+            }
+        }
+    });
+
+    $.ajax({
+        url: "/api/v1/monitor/ica_cert_expiry_stat_jeus",
+        success: function (data) {
+            if (data && data.ica_cert_expiry_stat_jeus) {
+                renderExpiryTable('icaCertStatJeus', data.ica_cert_expiry_stat_jeus, 'jeus', true);
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

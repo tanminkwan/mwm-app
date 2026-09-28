@@ -1,0 +1,78 @@
+{% extends "appbuilder/base.html" %}
+{% import 'appbuilder/general/lib.html' as lib %}
+
+{% block content %}
+<link rel="stylesheet" href="/static/css/simplemde.min.css" />
+<script src="/static/js/simplemde.min.js"></script>
+<link rel="stylesheet" href="/static/css/tagify.css" />
+<script src="/static/js/tagify.js"></script>
+<style>
+    .tagify__tag  {
+        background-color:#D6EAF8;
+    }
+</style>
+{{ lib.panel_begin(title, "edit") }}
+
+{% if related_views is defined %}
+    <ul class="nav nav-tabs"  style="{{"display: none;" if not related_views else "" }}">
+    <li class="active"><a href="#Home" data-toggle="tab">{{ _("Detail") }}</a> </li>
+        {% for view in related_views %}
+        <li><a href="#{{view.__class__.__name__}}" data-toggle="tab">{{view.title}}</a></li>
+        {% endfor %}
+        </ul>
+
+        <div class="tab-content">
+        {% for view in related_views %}
+        <div id="{{view.__class__.__name__}}" class="tab-pane">
+        {{ widgets.get('related_views')[loop.index - 1]()|safe }}
+    </div>
+    {% endfor %}
+{% endif %}
+
+{% block edit_form %}
+    <div id="Home" class="tab-pane active">
+        {{ widgets.get('edit')(form_action=form_action)|safe }}
+    </div>
+{% endblock %}
+
+    {% if related_views is defined %} </div> {% endif %}
+
+{{ lib.panel_end() }}
+{% endblock %}
+
+{% block add_tail_js %}
+<script>
+$(document).ready(function() {
+	//여기 아래 부분
+    new SimpleMDE({ element: document.getElementById("{{summer_column}}")})
+});
+{% if tags_column|length > 0 %}
+
+var input = document.querySelector('input[id={{tags_column}}]');
+tagify = new Tagify(input);
+tagify.on('change', function(e){
+	var str = ''
+	if(e.detail.value!=""){
+		var obj = JSON.parse(e.detail.value);
+		$(obj).each(function(index, value){
+			console.log(index,':',value.value);
+			if(str == ''){
+				str = value.value;
+			}else{
+				str = str + ', ' + value.value;
+			}
+		});
+	}
+	console.log('str :',str);
+	input.setAttribute('value',str);
+});
+var thisForm = document.getElementById('model_form');
+thisForm.onsubmit = function(){
+	input.value = input.getAttribute("value");
+	thisForm.submit();
+}
+
+{% endif %}
+</script>
+<script src="{{url_for('appbuilder.static',filename='js/ab_keep_tab.js')}}"></script>
+{% endblock %}

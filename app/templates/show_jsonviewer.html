@@ -1,0 +1,36 @@
+{% extends "appbuilder/base.html" %}
+{% block content %}
+<html>
+<head>
+    <meta charset="utf-8" />
+    <script src="/static/js/jquery.json-viewer.js"></script>
+    <link href="/static/css/jquery.json-viewer.css" type="text/css" rel="stylesheet" />
+
+<script>
+  $.ajax({
+    	url: "{{url}}",
+    	success: function(data){
+        console.log('Here');
+        try {
+          var input = data;
+        }catch (error) {
+          return alert("Cannot eval JSON: " + error);
+        }
+        $('#json-renderer').jsonViewer(input, "");
+	    }
+	});
+</script>
+
+</head>
+
+<body>
+
+<div id="element_to_pop_up">
+    <h4>{{title}}</h4>
+    <pre id="json-renderer"></pre>
+</div>
+
+</body>
+</html>
+	
+{% endblock %}

@@ -1,0 +1,197 @@
+services:
+  mwm-redis:
+    container_name: mwm-redis
+    image: redis:alpine
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis_data:/data
+  mwm-db:
+    container_name: mwm-db
+    image: postgres:15.2-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # 앱 계정 이름·비밀번호. 빈 볼륨 최초 초기화 때 create_db.sh 가 쓴다
+      - POSTGRES_APP_USER=${MWM_DB_USER:-mwm}
+      - POSTGRES_APP_PASSWORD=${MWM_DB_PASSWORD:?set MWM_DB_PASSWORD in .env}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - '5433:5432'
+    volumes:
+      # DB 데이터 디렉터리. 필수 — 기본값이 있으면 운영에서 빠뜨렸을 때 빈 DB 로 조용히 뜬다 (WS-4-8)
+      - ${MWM_DB_DATA_DIR:?set MWM_DB_DATA_DIR in .env}:/var/lib/postgresql/data
+      - ./create_db.sh:/docker-entrypoint-initdb.d/01_create_db.sh:ro
+      - ./create_db.sql:/opt/mwm-init/create_db.sql:ro
+      - ./idp/create_idp_db.sql:/opt/mwm-init/create_idp_db.sql:ro
+    # 빈 볼륨 최초 초기화 중에는 임시 서버가 TCP 를 열지 않는다. 소켓이 아니라 TCP 로 확인해야
+    # 초기화가 끝난 뒤의 실제 서버를 기다린다 (TASK 1-4 — 새 설치에서 IDP 가 먼저 떠 죽던 문제)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+  mwm-minio:
+    container_name: mwm-minio
+    image: minio/minio
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    environment:
+      - MINIO_CONFIG_ENV_FILE=/etc/config.env
+      # OIDC 클라이언트 비밀은 minio_config.env 에 두지 않고 여기서 준다.
+      # 이 MinIO 는 개발용 번들이다(운영 MinIO 는 별도). 선택 값 — 비우면 콘솔의 IDP 로그인만 실패한다
+      - MINIO_IDENTITY_OPENID_CLIENT_SECRET=${MINIO_OIDC_CLIENT_SECRET:-}
+    depends_on:
+      - mwm-nginx
+    volumes:
+      # 번들 MinIO(개발용) 데이터
+      - ${MWM_MINIO_DATA_DIR:-./volumes/minio}:/mnt/data
+      - ./minio_config.env:/etc/config.env
+      - ./certs/nginx/mwm_local.crt:/root/.minio/certs/CAs/mwm_local.crt:ro
+    command: server --console-address ":9001"
+    extra_hosts:
+      - "app.mwm.local:host-gateway"
+      - "idp.mwm.local:host-gateway"
+      - "minio.mwm.local:host-gateway"
+      - "s3.mwm.local:host-gateway"
+      - "mqtt-broker.local:host-gateway"
+  # 번들 MinIO 에 앱용 키·버킷을 만든다 (1회 실행 후 종료). 이미 있으면 건너뛴다 (TASK 1-4)
+  mwm-minio-init:
+    container_name: mwm-minio-init
+    image: minio/minio
+    depends_on:
+      - mwm-minio
+    entrypoint: ["/bin/sh", "/init/minio_init.sh"]
+    restart: "no"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID in .env}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY in .env}
+      - BUCKET_NAME=mwm-contents
+    volumes:
+      - ./minio_init.sh:/init/minio_init.sh:ro
+  mwm-idp:
+    container_name: mwm-idp
+    # 이미지는 compose 가 빌드하지 않는다 — docker build 로 먼저 만든다 (README '이미지 빌드').
+    # never: 로컬에 없으면 Docker Hub 에서 받지 않고 멈춘다
+    image: mwm-idp
+    pull_policy: never
+    depends_on:
+      mwm-db:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    environment:
+      TZ: Asia/Seoul
+      OIDC_ISSUER: "https://idp.mwm.local:20443"
+      IDP_EXTERNAL_SERVER_URL: "https://idp.mwm.local:20443"
+      IDP_DATABASE_URI: "postgresql://${MWM_DB_USER:-mwm}:${MWM_DB_PASSWORD:?set MWM_DB_PASSWORD in .env}@mwm-db:5432/idp"
+      IDP_SECRET_KEY: ${IDP_SECRET_KEY:?set IDP_SECRET_KEY in .env}
+      IDP_RSA_PRIVATE_KEY: "/etc/idp/certs/idp_private.pem"
+      IDP_MWM_CLIENT_ID: "mwm-client"
+      IDP_MWM_CLIENT_SECRET: ${IDP_CLIENT_SECRET:?set IDP_CLIENT_SECRET in .env}
+      IDP_MWM_REDIRECT_URI: "https://app.mwm.local:20443/idp/callback"
+      SYNC_MWM_DB_URI: "postgresql://${MWM_DB_USER:-mwm}:${MWM_DB_PASSWORD:?set MWM_DB_PASSWORD in .env}@mwm-db:5432/mw"
+    volumes:
+      # 키·인증서는 git 으로 배포하지 않는 ./certs/ 에 둔다 (TASK 1-1). 새 설치는 ./init_certs.sh
+      - ./certs/idp:/etc/idp/certs:ro
+    links:
+      - mwm-db
+    extra_hosts:
+      - "app.mwm.local:host-gateway"
+      - "idp.mwm.local:host-gateway"
+      - "minio.mwm.local:host-gateway"
+      - "s3.mwm.local:host-gateway"
+      - "mqtt-broker.local:host-gateway"
+
+  mwm-app:
+    container_name: mwm-app
+    # 이미지는 compose 가 빌드하지 않는다 — docker build 로 먼저 만든다 (README '이미지 빌드')
+    image: mwm-app
+    pull_policy: never
+    depends_on:
+      mwm-db:
+        condition: service_healthy
+      mwm-redis:
+        condition: service_started
+      mwm-kroki:
+        condition: service_started
+    ports:
+      - 8000:8000
+    environment:
+      TZ: Asia/Seoul
+      MWM_DATABASE_URI: "postgresql://${MWM_DB_USER:-mwm}:${MWM_DB_PASSWORD:?set MWM_DB_PASSWORD in .env}@mwm-db:5432/mw"
+      # 세션·JWT 서명 키. 필수 — 없거나 32바이트 미만이면 앱이 기동하지 않는다
+      MWM_SECRET_KEY: ${MWM_SECRET_KEY:-}
+      REDIS_URL: redis://mwm-redis:6379/0
+      AWS_URL: http://mwm-minio:9000
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID in .env}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set AWS_SECRET_ACCESS_KEY in .env}
+      BUCKET_NAME: mwm-contents
+      KROKI_URL: http://mwm-kroki:8000
+      IDP_EXTERNAL_SERVER_URL: https://idp.mwm.local:20443
+      IDP_INTERNAL_SERVER_URL: https://idp.mwm.local:20443
+      IDP_CLIENT_ID: mwm-client
+      # IDP 의 IDP_MWM_CLIENT_SECRET 과 같은 값이어야 한다 — .env 의 한 키를 함께 참조한다
+      IDP_CLIENT_SECRET: ${IDP_CLIENT_SECRET:?set IDP_CLIENT_SECRET in .env}
+      # 이 스택 밖의 외부 서비스. 실제 주소는 호스트 .env 에서 준다.
+      # 기본값은 동작하지 않는 예시 도메인이다 (config.py 기본값과 같다).
+      PLANTUML_URL: ${PLANTUML_URL:-https://plantuml.example.com:20443}
+      NOTIFICATION_URL: ${NOTIFICATION_URL:-https://monitor.example.com:20443/notification}
+      # 메일 발송(선택). 비우면 앱은 뜨고 메일 발송만 실패한다. 실제 값은 호스트 .env 에서 준다
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_SENDER: ${SMTP_SENDER:-}
+      # MQTT 실시간 Command 발송. 기본 끔. 켤 때만 호스트 .env 에서 True 로 준다.
+      # 브로커는 별도 compose 프로젝트(mqtt)에 있어 컨테이너 이름으로 닿지 않는다.
+      # 호스트에 노출된 1883 을 게이트웨이 IP 경유로 접근한다.
+      MQTT_ENABLED: ${MQTT_ENABLED:-False}
+      MQTT_BROKER_HOST: ${MQTT_BROKER_HOST:-mqtt-broker.local}
+      MQTT_BROKER_PORT: ${MQTT_BROKER_PORT:-1883}
+      MQTT_USERNAME: ${MQTT_USERNAME:-central}
+      MQTT_PASSWORD: ${MQTT_PASSWORD:-}
+    links:
+      - mwm-db
+      - mwm-redis
+      - mwm-kroki
+    extra_hosts:
+      - "app.mwm.local:host-gateway"
+      - "idp.mwm.local:host-gateway"
+      - "minio.mwm.local:host-gateway"
+      - "s3.mwm.local:host-gateway"
+      - "mqtt-broker.local:host-gateway"
+
+  mwm-kroki:
+    container_name: mwm-kroki
+    image: yuzutech/kroki:latest
+    environment:
+      - KROKI_MERMAID_HOST=mwm-kroki-mermaid
+    ports:
+      - "8081:8000"
+
+  mwm-kroki-mermaid:
+    container_name: mwm-kroki-mermaid
+    image: yuzutech/kroki-mermaid:latest
+
+  mwm-nginx:
+    container_name: mwm-nginx
+    image: nginx:stable-alpine
+    ports:
+      - "20080:80"
+      - "20443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs/nginx:/etc/nginx/certs:ro
+    depends_on:
+      - mwm-app
+      - mwm-idp
+    extra_hosts:
+      - "app.mwm.local:host-gateway"
+      - "idp.mwm.local:host-gateway"
+      - "minio.mwm.local:host-gateway"
+      - "s3.mwm.local:host-gateway"
+      - "mqtt-broker.local:host-gateway"
+
+volumes:
+  redis_data:

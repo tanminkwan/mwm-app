@@ -1,0 +1,88 @@
+{% extends "appbuilder/base.html" %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 col-md-offset-2">
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h3 class="panel-title"><i class="fa fa-key"></i> 개인 인증 토큰 발급 (API API Key)</h3>
+                </div>
+                <div class="panel-body">
+                    <p class="text-muted">제3자 시스템(예: CI/CD 연동, 자동 보고 스크립트)에서 미들웨어관리소 API를 사용할 수 있도록 <strong>1년(365일) 동안 유효한</strong> 토큰을 발급합니다.</p>
+                    
+                    <div class="well">
+                        <p><strong>발급 안내:</strong></p>
+                        <ul>
+                            <li>발급 즉시 365일간 유효한 JWT 토큰이 생성됩니다.</li>
+                            <li><span class="text-danger">보안을 위해 한 번만 확인 가능하며, 페이지를 벗어나면 다시 볼 수 없습니다.</span></li>
+                            <li>토큰이 노출된 경우 다시 발급하여 기존 토큰을 무효화할 수 있게 관리하세요.</li>
+                        </ul>
+                    </div>
+
+                    <div class="text-center">
+                        <button id="gen-token-btn" class="btn btn-lg btn-success">
+                            <i class="fa fa-plus-circle"></i> 신규 토큰 생성하기
+                        </button>
+                    </div>
+
+                    <div id="token-display" style="margin-top: 30px; display: none;">
+                        <hr>
+                        <h4><i class="fa fa-check-circle text-success"></i> 발급된 토큰</h4>
+                        <div class="input-group">
+                            <textarea id="token-text" class="form-control" rows="8" readonly style="font-family: monospace; font-size: 12px; background-color: #f9f9f9; padding: 15px;"></textarea>
+                            <span class="input-group-btn">
+                                <button class="btn btn-default" type="button" id="copy-btn" style="height: 100%;">
+                                    <i class="fa fa-copy"></i> 복사
+                                </button>
+                            </span>
+                        </div>
+                        <p class="help-block text-danger" style="margin-top: 10px;">
+                            <strong>주의:</strong> 위 텍스트 박스 전체를 복사하여 <code>Authorization: Bearer &lt;토큰&gt;</code> 헤더로 사용하세요.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('gen-token-btn').onclick = function() {
+    if (!confirm('새로운 토큰을 발급하시겠습니까? (기존 토큰을 교체하려면 새 토큰을 기록해 두어야 합니다.)')) return;
+    
+    this.disabled = true;
+    this.innerHTML = '<i class="fa fa-spinner fa-spin"></i> 발급 중...';
+    
+    fetch('/common/generate_long_term_token')
+    .then(response => {
+        if (!response.ok) throw new Error('발급 실패');
+        return response.json();
+    })
+    .then(data => {
+        document.getElementById('token-text').value = data.token;
+        document.getElementById('token-display').style.display = 'block';
+        this.innerHTML = '<i class="fa fa-refresh"></i> 토큰 재발급하기';
+        this.disabled = false;
+        
+        // 자동 스크롤
+        window.scrollTo({
+            top: document.getElementById('token-display').offsetTop,
+            behavior: 'smooth'
+        });
+    })
+    .catch(err => {
+        alert('토큰 발급 중 오류가 발생했습니다: ' + err.message);
+        this.disabled = false;
+        this.innerHTML = '<i class="fa fa-plus-circle"></i> 신규 토큰 생성하기';
+    });
+};
+
+document.getElementById('copy-btn').onclick = function() {
+    const copyText = document.getElementById('token-text');
+    copyText.select();
+    copyText.setSelectionRange(0, 99999); 
+    document.execCommand('copy');
+    alert('토큰이 클립보드에 복사되었습니다.');
+};
+</script>
+{% endblock %}
