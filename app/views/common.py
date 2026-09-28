@@ -171,7 +171,15 @@ def call_notification(text):
         data = {"msg": text}
         url = app.config['NOTIFICATION_URL']
 
-        resp = requests.post(url, data=json.dumps(data), headers=headers, verify=False)
+        # 인증서 검증은 설정을 따른다 (config.NOTIFICATION_VERIFY — 기본 켬)
+        try:
+            resp = requests.post(url, data=json.dumps(data), headers=headers,
+                                 verify=app.config.get('NOTIFICATION_VERIFY', True), timeout=10)
+        except requests.exceptions.RequestException as e:
+            # 레코드마다 부른다 — 하나가 실패해도 배치 job 은 계속돼야 한다
+            logging.error(f'notification 연계시 Error발생 : {e} '
+                          f'(사설 인증서라면 NOTIFICATION_VERIFY 에 CA 파일 경로를 준다)')
+            return
 
         if resp.status_code != 200:
             logging.error(f'notification 연계시 Error발생 : {str(resp.status_code)}')

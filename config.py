@@ -78,6 +78,10 @@ AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', '')
 BUCKET_NAME = os.getenv('BUCKET_NAME', 'mwm-contents')
 
 NOTIFICATION_URL = os.getenv('NOTIFICATION_URL', 'https://monitor.example.com:20443/notification')
+# NOTIFICATION_URL 의 TLS 인증서 검증: true(기본) / false / CA 번들 파일 경로
+# 알림 서버가 사설 인증서면 그 CA 파일 경로를 준다. false 는 서버 사칭을 막지 못한다
+_notification_verify = os.getenv('NOTIFICATION_VERIFY', '').strip()
+NOTIFICATION_VERIFY = {'': True, 'true': True, 'false': False}.get(_notification_verify.lower(), _notification_verify)
 BUCKET_PREFIX = '/uploads/'
 
 # Flask-WTF flag for CSRF

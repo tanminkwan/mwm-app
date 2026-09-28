@@ -530,7 +530,11 @@ class JeusDomain(ABC):
         return 1
 
     def _getAppID(self, was_instance_id):
-        tmp = re.sub(r'(\d+)(?!.*\d)', '', was_instance_id)
+        # 마지막 숫자 묶음을 지운다. 예전 식 (\d+)(?!.*\d) 는 숫자가 길면 제곱으로 느려졌다 (CodeQL py/polynomial-redos)
+        last = None
+        for last in re.finditer(r'\d+', was_instance_id):
+            pass
+        tmp = was_instance_id[:last.start()] + was_instance_id[last.end():] if last else was_instance_id
         tmp = re.sub(r'_MS[A-Z]','_MS', tmp)
         return self.domain_id + '.' + tmp\
                  if was_instance_id != 'adminServer' else 'NOAPP'

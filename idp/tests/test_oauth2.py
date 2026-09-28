@@ -144,6 +144,24 @@ class TestTokenExchange:
         })
         assert resp.status_code == 400
 
+    def test_unsupported_grant_type_does_not_echo_the_input(self, client, db):
+        # RFC 6749 §5.2 — error 는 코드만. 입력을 되돌려 주지 않는다 (CodeQL py/reflective-xss)
+        resp = client.post("/oauth/token", data={"grant_type": "<script>alert(1)</script>"})
+        assert resp.status_code == 400
+        assert resp.is_json
+        assert resp.get_json() == {"error": "unsupported_grant_type"}
+
+    def test_token_request_log_has_no_secrets(self, client, db, caplog):
+        # 토큰 요청 본문에는 client_secret·code·refresh_token 이 들어 있다. 로그에 남기면 안 된다
+        import logging
+        with caplog.at_level(logging.DEBUG):
+            client.post("/oauth/token", data={
+                "grant_type": "authorization_code", "client_id": "test-client",
+                "client_secret": "SECRET-VALUE", "code": "CODE-VALUE", "refresh_token": "RT-VALUE",
+            })
+        for value in ("SECRET-VALUE", "CODE-VALUE", "RT-VALUE"):
+            assert value not in caplog.text
+
 
 class TestRefreshToken:
     def _get_tokens(self, client, sample_user, sample_oauth_client):

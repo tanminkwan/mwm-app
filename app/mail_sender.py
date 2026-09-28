@@ -5,6 +5,7 @@ Mail Sender Module
 - 파일 첨부 및 본문 삽입 이미지(CID) 지원
 - UTF-8 한글 파일명 지원
 """
+import re
 import smtplib
 import logging
 from os.path import basename
@@ -16,6 +17,13 @@ from email.utils import COMMASPACE, formatdate, formataddr
 from email.header import Header
 
 log = logging.getLogger(__name__)
+
+# convert_md_to_html 의 본문 치환 식. 본문은 사용자가 쓴다 — 입력 길이에 선형이어야 한다 (CodeQL py/polynomial-redos)
+# 마크다운 이미지 ![alt](/common/download/<경로>). alt 에 '[' 를 빼야 `![` 반복에서 제곱이 되지 않는다
+MD_IMAGE_RE = re.compile(r'(!\[[^\[\]]*\]\()/common/download/([^)\s]+)')
+# ```mermaid 블록. 줄 앞뒤 공백은 [ \t]* — \s* 는 \n 까지 먹어 옆의 \n 과 겨루며 제곱이 된다.
+# 펜스 바로 안쪽의 빈 줄은 내용에 남지만 호출부가 strip() 한다
+MERMAID_RE = re.compile(r'^[ \t]*```mermaid[ \t]*\n(.*?)\n[ \t]*```', re.MULTILINE | re.DOTALL)
 
 
 def send_mail(host, port, sender, sender_name, receivers, subject, content,
@@ -213,11 +221,11 @@ def convert_md_to_html(md_content, kroki_url):
 
     md_content = md_content or ''
     # Replace markdown image URLs ![...](/common/download/...)
-    md_content = re.sub(r'(!\[[^\]]*\]\()/common/download/([^)\s]+)', s3_md_image_replacer, md_content)
+    md_content = MD_IMAGE_RE.sub(s3_md_image_replacer, md_content)
     # Replace HTML image src src="/common/download/..."
     md_content = re.sub(r'src=["\']/common/download/([^"\'\s]+)["\']', s3_html_image_replacer, md_content)
 
-    md_content = re.sub(r'(?m)^\s*```mermaid\s*\n(.*?)\n\s*```', mermaid_replacer, md_content, flags=re.DOTALL)
+    md_content = MERMAID_RE.sub(mermaid_replacer, md_content)
 
     html_content = markdown.markdown(
         md_content,

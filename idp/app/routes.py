@@ -195,7 +195,9 @@ def authorize():
 def token():
     _, oauth_service, _, _ = _get_services()
 
-    current_app.logger.info(f"Token request from {request.remote_addr}: form={request.form}")
+    # 본문(client_secret·code·refresh_token)은 로그에 남기지 않는다 — 비밀이다
+    current_app.logger.info(f"Token request from {request.remote_addr}: "
+                            f"grant_type={request.form.get('grant_type', '')!r}")
 
     grant_type = request.form.get("grant_type", "")
     client_id = request.form.get("client_id", "")
@@ -224,7 +226,8 @@ def token():
                 client_secret=client_secret,
             )
         else:
-            return {"error": f"unsupported_grant_type: {grant_type}"}, 400
+            # RFC 6749 §5.2 — 오류 코드만 돌려준다. 입력을 되돌려 주지 않는다
+            return {"error": "unsupported_grant_type"}, 400
 
         return token_data, 200
 

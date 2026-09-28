@@ -1,6 +1,7 @@
 from app.models.common import get_user
 from app.models.common import get_user
 from abc import ABC, abstractmethod
+import ast
 import logging
 import re
 from flask import g
@@ -627,15 +628,32 @@ class WebtobHttpm(ABC):
 
         return 1
 
+def _parse_web_info(webInfo):
+    """webInfo 를 dict 로. 문자열이면 **리터럴로만** 해석한다.
+
+    스케줄러·배치 API 를 거치면 `"{'host_id': 'h1', 'port': '8080'}"` 같은 문자열로 온다.
+    예전에는 eval() 해서 배치 API 로 임의 코드를 실행할 수 있었다 (CodeQL py/code-injection).
+    """
+    if isinstance(webInfo, dict):
+        return webInfo
+    try:
+        wi = ast.literal_eval(webInfo)
+    except (ValueError, SyntaxError, TypeError) as e:
+        raise ValueError(f'webInfo must be a dict literal: {e}') from None
+    if not isinstance(wi, dict):
+        raise ValueError(f'webInfo must be a dict, got {type(wi).__name__}')
+    return wi
+
+
 def _create_domain_name_info(webInfo):
 
     if not webInfo:
         return 0, 'Parameters don\'t exist'
 
-    if isinstance(webInfo, str):
-        wi = eval(webInfo)
-    else:
-        wi = webInfo
+    try:
+        wi = _parse_web_info(webInfo)
+    except ValueError as e:
+        return 0, str(e)
 
     web_rec = db.session.query(MwWeb)\
                 .filter(MwWeb.host_id==wi['host_id'], MwWeb.port==wi['port'])\
@@ -720,10 +738,10 @@ def _create_ssl_info(webInfo):
     if not webInfo:
         return 0, ''
 
-    if isinstance(webInfo, str):
-        wi = eval(webInfo)
-    else:
-        wi = webInfo
+    try:
+        wi = _parse_web_info(webInfo)
+    except ValueError as e:
+        return 0, str(e)
 
     web_rec = db.session.query(MwWeb)\
                 .filter(MwWeb.host_id==wi['host_id'], MwWeb.port==wi['port'])\
