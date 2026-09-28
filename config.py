@@ -15,7 +15,8 @@ import logging
 LOGGING_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
 # 환경변수에서 로깅 레벨 가져오기
-log_level = os.getenv('LOGGING_LEVEL', 'DEBUG').upper()
+# 기본 INFO — DEBUG 는 요청 내용까지 남기므로 개발 때만 켠다 (WS-1-7)
+log_level = os.getenv('LOGGING_LEVEL', 'INFO').upper()
 
 # 로깅 레벨 문자열을 로깅 모듈의 레벨 상수로 변환
 log_levels = {
@@ -25,7 +26,7 @@ log_levels = {
     'ERROR': logging.ERROR,
     'CRITICAL': logging.CRITICAL
 }
-LOGGING_LEVEL = log_levels.get(log_level)  # 기본값은 INFO
+LOGGING_LEVEL = log_levels.get(log_level, logging.INFO)  # 모르는 값도 INFO
 
 # .env 파일 로드
 load_dotenv()
@@ -157,7 +158,8 @@ IMG_UPLOAD_URL = "/static/uploads/"
 # IMG_SIZE = (300, 200, True)
 
 FAB_API_SWAGGER_UI = True
-FAB_API_SHOW_STACKTRACE = True
+# API 오류 응답에 스택트레이스를 싣지 않는다. 개발 때만 켠다 (WS-1-7)
+FAB_API_SHOW_STACKTRACE = os.getenv('FAB_API_SHOW_STACKTRACE', 'False').lower() in ('true', '1', 'yes')
 
 # Theme configuration
 # these are located on static/appbuilder/css/themes

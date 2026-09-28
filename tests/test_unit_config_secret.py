@@ -109,3 +109,26 @@ def test_smtp_server_is_configurable():
     assert default.returncode == 0, default.stderr
     assert default.stdout.strip() == "('smtp.gmail.com', 587)"
     assert custom.stdout.strip() == "('mail.example.com', 2525)"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('value, expected', [(None, 20), ('debug', 10), ('WARNING', 30), ('nonsense', 20)],
+                         ids=['default', 'debug', 'warning', 'invalid'])
+def test_logging_level_defaults_to_info(value, expected):
+    """기본은 INFO (WS-1-7). 예전 기본값 DEBUG 는 운영 로그에 요청 내용까지 남겼다. 모르는 값도 INFO."""
+    result = _run_config('config.LOGGING_LEVEL', drop=('LOGGING_LEVEL',), LOGGING_LEVEL=value)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == str(expected)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize('value, expected', [(None, 'False'), ('true', 'True'), ('False', 'False')],
+                         ids=['default', 'on', 'off'])
+def test_api_stacktrace_is_hidden_by_default(value, expected):
+    """API 오류 응답에 스택트레이스를 싣지 않는다 (WS-1-7). 개발 때만 켠다."""
+    result = _run_config('config.FAB_API_SHOW_STACKTRACE', drop=('FAB_API_SHOW_STACKTRACE',),
+                         FAB_API_SHOW_STACKTRACE=value)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == expected
