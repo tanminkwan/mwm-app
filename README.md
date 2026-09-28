@@ -76,6 +76,7 @@ cp .env.example .env                                  # '필수' 칸을 채운�
 docker compose up -d                                  # DB 초기화가 끝나면 IDP·앱이 뜬다
 docker exec -it mwm-app flask fab create-admin        # 최초 1회 — 관리자 계정 생성
 docker compose restart mwm-idp                        # 만든 계정을 IDP 로 동기화 (IDP 는 기동 때 동기화한다)
+docker exec -i mwm-db psql -U mwm -d mw -f /dev/stdin < seed_data.sql   # 최초 1회 — 기본 명령 유형 등 (MWM_DB_USER 를 바꿨다면 그 이름)
 ```
 
 ### 테스트

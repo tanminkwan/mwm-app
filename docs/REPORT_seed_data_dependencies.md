@@ -172,6 +172,9 @@ MwWasInstance → was_id → MS-{was_id}-{host} 태그 → 상위 log.format* �
 | `insert_data.py` | 84 | `EXTRACT.LOG` + `uok01a` 테스트 서버/WAS |
 | `insert_data2.py` | 46 | 추가 테스트 데이터 |
 
+> **2026-09-28 해소** — 저장소 루트의 `seed_data.sql` 이 명령 유형 9개와 자동 후처리 3개를 넣는다
+> (멱등, 새 설치 절차에 포함). 시험용 `Read.domain.xml`·`test.download` 는 넣지 않는다.
+
 **A~D 에서 필요한 시드 중 `EXTRACT.LOG` 하나만 스크립트화되어 있다.**
 나머지 — `updateToken`, `SYNC.ROLE_PERMISSIONS`, `WAS.REBUILD`,
 `CALL.GET_SSL_CERTI`, `ag_autorun_result` 3행, 그리고
