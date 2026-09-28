@@ -61,6 +61,25 @@ jobs:
             fi
           '
 
+  secrets:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          fetch-depth: 0   # 이력 검사에 전체 커밋이 필요하다
+
+      # 비밀번호·키·토큰 패턴을 찾는다. 찾으면 실패한다. 로그에는 값을 가려서(--redact) 남긴다.
+      #   공개 저장소(tanminkwan/mwm-app) : 커밋 이력 전체
+      #   비공개 원본                     : 현재 파일만 — 옛 이력에 운영 자격증명이 있다 (그래서 공개하지 않는다)
+      # 고객사·개인 식별자(호스트명 등)는 gitleaks 가 잡지 못한다. 공개본을 만들 때 따로 검사한다.
+      - name: gitleaks
+        run: |
+          if [ "${{ github.repository }}" = "tanminkwan/mwm-app" ]; then MODE=git; else MODE=dir; fi
+          echo "scan mode: $MODE"
+          docker run --rm -u "$(id -u)" -v "$PWD:/repo:ro" zricethezav/gitleaks:v8.30.1 \
+            "$MODE" /repo --no-banner --redact --verbose
+
   test:
     name: Test (Docker)
     runs-on: ubuntu-latest
