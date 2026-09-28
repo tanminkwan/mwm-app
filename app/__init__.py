@@ -14,6 +14,18 @@ class MyIndexView(IndexView):
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
+
+
+@app.after_request
+def _vary_on_cookie(response):
+    """세션을 쓰는 응답이 앞단 캐시에 공유되지 않게 한다 (Flask PYSEC-2026-2151 완화).
+
+    고친 Flask(3.1.3)는 FAB 4.x 가 허용하지 않는다. 대부분 응답이 사용자별이라 모든 응답에 붙인다.
+    """
+    response.vary.add('Cookie')
+    return response
+
+
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 app.config.from_object("config")
 app.config['SCHEDULER_JOBSTORES'] = {

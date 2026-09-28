@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y supervisor
 COPY requirements.txt requirements.txt
 
 # Install dependencies
+# 빌드 도구 자체의 취약점도 막는다 (pip·setuptools·wheel, pip-audit 기준)
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install redis
 
