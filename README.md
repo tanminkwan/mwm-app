@@ -30,7 +30,7 @@
 
 ## 🏗️ 시스템 아키텍처
 
-- **Backend**: Python 3.12, Flask 2.2+, Flask-AppBuilder
+- **Backend**: Python 3.12, Flask 3.1, Flask-AppBuilder 5
 - **Persistent Scheduler**: 
   - **SQLAlchemyJobStore** 도입으로 스케줄 정보 DB 영구 저장.
   - Multi-Worker(Gunicorn) 환경에서도 안전한 단일 스케줄러 인스턴스 보장.

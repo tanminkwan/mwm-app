@@ -1,3 +1,4 @@
+from flask_appbuilder import Model
 from app import db
 from flask import g, current_app
 from sqlalchemy.sql import update, func, sqltypes
@@ -19,13 +20,13 @@ from sys import exc_info
 import logging
 
 def _get_table_dict():
-    """Returns a dictionary of all tables defined in db.Model."""
-    return {table.__tablename__: table for table in db.Model.__subclasses__()}
+    """테이블 이름 → 모델. FAB 5 에서 db.Model 은 FAB Model 이 아니므로 FAB Model 의 하위 클래스를 본다."""
+    return {table.__tablename__: table for table in Model.__subclasses__()}
 
 def _get_table_args():
     """Returns a dictionary of __table_args__ for all models."""
     result = {}
-    for table in db.Model.__subclasses__():
+    for table in Model.__subclasses__():
         targs = getattr(table, '__table_args__', None)
         if isinstance(targs, tuple):
             # Last element of tuple is the dict with comment etc.

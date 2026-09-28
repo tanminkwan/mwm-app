@@ -11,18 +11,11 @@ You need to add on config this:
 import logging
 import os
 
-from flask.globals import _request_ctx_stack
+from flask import current_app
 from flask_appbuilder.filemanager import FileManager, uuid_namegen
 from flask_appbuilder.upload import FileUploadField
 import boto3
 from botocore.client import Config
-
-try:
-    from flask import _app_ctx_stack
-except ImportError:
-    _app_ctx_stack = None
-
-app_stack = _app_ctx_stack or _request_ctx_stack
 
 log = logging.getLogger(__name__)
 
@@ -59,32 +52,30 @@ class S3FileManager(FileManager):
                  allowed_extensions=None,
                  **kwargs):
 
-        ctx = app_stack.top
-
-        if "AWS_URL" in ctx.app.config:
-            self.aws_url = ctx.app.config["AWS_URL"]
+        if "AWS_URL" in current_app.config:
+            self.aws_url = current_app.config["AWS_URL"]
         else:
             self.aws_url = None
-        if "AWS_ACCESS_KEY_ID" in ctx.app.config:
-            self.aws_access_key_id = ctx.app.config["AWS_ACCESS_KEY_ID"]
+        if "AWS_ACCESS_KEY_ID" in current_app.config:
+            self.aws_access_key_id = current_app.config["AWS_ACCESS_KEY_ID"]
         else:
             raise Exception('Config key AWS_ACCESS_KEY_ID is mandatory')
-        if "AWS_SECRET_ACCESS_KEY" in ctx.app.config:
-            self.aws_secret_access_key = ctx.app.config["AWS_SECRET_ACCESS_KEY"]
+        if "AWS_SECRET_ACCESS_KEY" in current_app.config:
+            self.aws_secret_access_key = current_app.config["AWS_SECRET_ACCESS_KEY"]
         else:
             raise Exception('Config key AWS_SECRET_ACCESS_KEY is mandatory')
-        if 'BUCKET_NAME' in ctx.app.config and not bucket_name:
-            bucket_name = ctx.app.config['BUCKET_NAME']
+        if 'BUCKET_NAME' in current_app.config and not bucket_name:
+            bucket_name = current_app.config['BUCKET_NAME']
         if not bucket_name:
             raise Exception('Config key BUCKET_NAME is mandatory')
-        if 'BUCKET_PREFIX' in ctx.app.config and not relative_path:
-            relative_path = ctx.app.config['BUCKET_PREFIX']
+        if 'BUCKET_PREFIX' in current_app.config and not relative_path:
+            relative_path = current_app.config['BUCKET_PREFIX']
 
         self.bucket_name = bucket_name
         self.relative_path = relative_path
         self.namegen = namegen or uuid_namegen
-        if not allowed_extensions and 'FILE_ALLOWED_EXTENSIONS' in ctx.app.config:
-            self.allowed_extensions = ctx.app.config['FILE_ALLOWED_EXTENSIONS']
+        if not allowed_extensions and 'FILE_ALLOWED_EXTENSIONS' in current_app.config:
+            self.allowed_extensions = current_app.config['FILE_ALLOWED_EXTENSIONS']
         else:
             self.allowed_extensions = allowed_extensions
         self._should_delete = False

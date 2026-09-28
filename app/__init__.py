@@ -3,7 +3,8 @@ import os
 import sys
 from flask import Flask, jsonify
 from flask_migrate import Migrate
-from flask_appbuilder import AppBuilder, SQLA, IndexView
+from flask_appbuilder import AppBuilder, IndexView, Model
+from flask_appbuilder.models.sqla.base import SQLA
 
 from flask_apscheduler import APScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
@@ -43,7 +44,9 @@ logging.basicConfig(
 )
 #logging.getLogger('werkzeug').setLevel(app.config['LOGGING_LEVEL'])
 
-db = SQLA(app)
+# FAB 5 의 SQLA 는 더 이상 FAB Model 을 declarative base 로 묶지 않는다 — 메타데이터를 직접 넘겨
+# create_all·마이그레이션이 FAB 보안 테이블과 앱 테이블을 함께 보게 한다
+db = SQLA(app, metadata=Model.metadata)
 migrate = Migrate(app, db)
 
 
@@ -52,6 +55,10 @@ migrate = Migrate(app, db)
 from app.fieldwidgets import install as _install_datetime_widget
 _install_datetime_widget()
 
+# FAB 5 는 AppBuilder 생성·뷰 등록 때 앱 컨텍스트가 필요하다. 초기화 동안만 열고 바로 닫는다 —
+# 계속 열어 두면 요청 사이에 g(로그인 사용자)가 이어진다 (tests/conftest.py 참조)
+_init_ctx = app.app_context()
+_init_ctx.push()
 appbuilder = AppBuilder(app, db.session, indexview=MyIndexView)
 #Current WAS Status
 WAS_STATUS = dict()
@@ -99,6 +106,7 @@ appbuilder.add_link("API Documentation", href="/swagger/v1", category="Security"
 # Add API Token Management to '나의 정보' (My Info) menu, visible to general users
 # Use add_view with category to ensure sync_role_permissions can collect all PVMs correctly
 appbuilder.add_view(TokenView(), "개인 인증 토큰 발급", icon="fa-user", category="나의 정보")
+_init_ctx.pop()
 
 # MQTT 실시간 Command 발송 (MQTT_ENABLED=False 면 아무 작업도 하지 않는다)
 from .mqtt import init_publisher as init_mqtt_publisher

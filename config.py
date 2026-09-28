@@ -1,8 +1,7 @@
 import os
 import sys
 import redis
-from flask_appbuilder.security.manager import (
-    AUTH_OID,
+from flask_appbuilder.security.manager import (  # AUTH_OID(OpenID 2)는 FAB 5 에서 없어졌다
     AUTH_REMOTE_USER,
     AUTH_DB,
     AUTH_LDAP,
@@ -88,7 +87,7 @@ CSRF_ENABLED = True
 # GLOBALS FOR APP Builder
 # ------------------------------
 # Uncomment to setup Your App name
-APP_NAME = "미들웨어관리소(VER:20260928.001)"
+APP_NAME = "미들웨어관리소(VER:20260928.002)"
 PREFERRED_URL_SCHEME = 'https'
 
 # Uncomment to setup Setup an App icon
@@ -98,7 +97,6 @@ PREFERRED_URL_SCHEME = 'https'
 # AUTHENTICATION CONFIG
 # ----------------------------------------------------
 # The authentication type
-# AUTH_OID : Is for OpenID
 # AUTH_DB : Is for database (username/password()
 # AUTH_LDAP : Is for LDAP
 # AUTH_REMOTE_USER : Is for using REMOTE_USER from web server

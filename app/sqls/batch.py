@@ -1,3 +1,4 @@
+from app.appctx import with_app_context
 from app import appbuilder, db, WAS_STATUS
 from app.models.was import MwWasWebtobConnector, MwWebServer, MwWas, MwWeb, MwWebVhost\
         , MwWebDomain, MwWebSsl
@@ -47,6 +48,7 @@ def batch_function(func):
     
     return batch_wrapper
 
+@with_app_context
 def run_batch_by_scheduler(command_id, function_name, additional_param=''):
     try:
         # 전역 네임스페이스에서 함수 찾기

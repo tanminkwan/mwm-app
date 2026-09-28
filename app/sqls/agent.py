@@ -1,3 +1,4 @@
+from app.appctx import with_app_context
 import logging
 from app import appbuilder, db
 from flask import g, current_app
@@ -581,6 +582,7 @@ def create_command_detail(command):
 
     return 1, 'OK'
 
+@with_app_context
 def create_command_detail_by_sch(command_id):
 
     logging.debug('mwm create_command_detail_by_sch [%s]', command_id)

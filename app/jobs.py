@@ -10,16 +10,20 @@ from app.sqls.agent import finish_commands_by_scheduler, create_command_detail_b
 from app.sqls.batch import run_batch_by_scheduler
 from app.sqls.monitor import get_not_running_was_list
 from app.views.common import call_notification
+from app.appctx import with_app_context
 
 @scheduler.task('cron', id='job_ag_finish_commands', name='Remove Finished Commands', minute='*/1')
+@with_app_context
 def job_ag_finish_commands():
     finish_commands_by_scheduler()
 
 @scheduler.task('cron', id='job_ag_extend_token_expiry', name='Refrash Token Update to Agents', hour='*/12')
+@with_app_context
 def job_ag_extend_token_expiry():
     get_closeto_token_expiry_bysch(3)
 
 @scheduler.task('cron', id='notify_was_abnormal_status', name='Notify WAS Abnormal Status', minute='*/1')
+@with_app_context
 def notify_was_abnormal_status():
     _, recs, _ = get_not_running_was_list()
 
@@ -28,6 +32,7 @@ def notify_was_abnormal_status():
 
 #@scheduler.task('cron', id='job_ag_start_jobs', name='Remove Finished Commands', minute='*/1')
 @scheduler.task('date', id='job_ag_start_jobs')
+@with_app_context
 def job_ag_start_jobs():
     db.session.remove()
     logging.debug('job_ag_start_jobs (one-time sync) is called.')
