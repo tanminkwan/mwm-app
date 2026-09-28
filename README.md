@@ -79,6 +79,20 @@ docker compose restart mwm-idp                        # 만든 계정을 IDP 로
 docker exec -i mwm-db psql -U mwm -d mw -f /dev/stdin < seed_data.sql   # 최초 1회 — 기본 명령 유형 등 (MWM_DB_USER 를 바꿨다면 그 이름)
 ```
 
+### 접속
+
+nginx 가 도메인별로 나눠 줍니다(자체 서명 인증서라 브라우저 경고가 뜹니다). 먼저 hosts 에 도메인을 등록합니다.
+
+```
+127.0.0.1  app.mwm.local idp.mwm.local minio.mwm.local s3.mwm.local     # /etc/hosts
+```
+
+| 서비스 | 주소 |
+| :--- | :--- |
+| 앱 | https://app.mwm.local:20443 (직접: http://localhost:8000) |
+| IDP (SSO) | https://idp.mwm.local:20443 |
+| MinIO 콘솔 | https://minio.mwm.local:20443 |
+
 ### 테스트
 
 테스트 러너는 운영 이미지에 없습니다(`requirements-dev.txt`). `mwm-test` 에서 돌립니다.
@@ -158,3 +172,7 @@ CI(`.github/workflows/python-app.yml`)가 같은 명령을 돌립니다.
   ```bash
   docker logs -f mwm-app
   ```
+
+## 📄 라이선스
+
+[MIT](LICENSE)
