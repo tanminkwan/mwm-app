@@ -91,7 +91,7 @@ CSRF_ENABLED = True
 # GLOBALS FOR APP Builder
 # ------------------------------
 # Uncomment to setup Your App name
-APP_NAME = "미들웨어관리소(VER:20260929.001)"
+APP_NAME = "미들웨어관리소(VER:20260929.002)"
 PREFERRED_URL_SCHEME = 'https'
 
 # Uncomment to setup Setup an App icon

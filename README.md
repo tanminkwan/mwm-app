@@ -1,5 +1,10 @@
 # 🛠️ MWM (Middleware Management System) - 미들웨어관리소
 
+[![CI](https://github.com/tanminkwan/mwm-app/actions/workflows/python-app.yml/badge.svg)](https://github.com/tanminkwan/mwm-app/actions/workflows/python-app.yml)
+[![CodeQL](https://github.com/tanminkwan/mwm-app/actions/workflows/codeql.yml/badge.svg)](https://github.com/tanminkwan/mwm-app/actions/workflows/codeql.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
+
 ## 📋 프로젝트 개요
 **미들웨어관리소(MWM)**는 미들웨어(WAS, WEB) 및 IT 자산의 상태를 모니터링하고, 변경 사항을 대사(Compare)하며, Kroki 기반의 Mermaid 다이어그램을 포함한 고급 이메일 리포트를 생성하는 통합 관리 솔루션입니다.
 

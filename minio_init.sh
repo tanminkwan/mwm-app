@@ -13,11 +13,16 @@ until mc alias set root "$EP" "$ROOT_USER" "$ROOT_PASSWORD" >/dev/null 2>&1; do
     sleep 2
 done
 
-if mc alias set app "$EP" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" >/dev/null 2>&1 \
-   && mc ls "app/$BUCKET_NAME" >/dev/null 2>&1; then
-    echo "skip: 앱 키로 버킷 '$BUCKET_NAME' 에 이미 닿는다"
-    exit 0
-fi
+# MinIO 는 root 로그인을 먼저 받고 사용자(IAM)는 조금 늦게 읽는다 — 앱 키 확인은 몇 번 재시도한다
+i=0
+while [ "$i" -lt 15 ]; do
+    if mc alias set app "$EP" "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" >/dev/null 2>&1 \
+       && mc ls "app/$BUCKET_NAME" >/dev/null 2>&1; then
+        echo "skip: 앱 키로 버킷 '$BUCKET_NAME' 에 이미 닿는다"
+        exit 0
+    fi
+    i=$((i + 1)); sleep 2
+done
 
 mc mb --ignore-existing "root/$BUCKET_NAME"
 mc admin user add root "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY"
