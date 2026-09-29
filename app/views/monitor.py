@@ -17,7 +17,8 @@ from datetime import datetime, timedelta
 from app.sqls.monitor import select_row, get_grid_config, create_was_status_report\
                     , get_not_running_was_list, get_column_type, get_target_table_name\
                     , select_rows2, get_cert_expiry_stat, get_cert_expiry_stat_jeus
-from app.sqls.agent import get_agent_stat, get_error_results, insert_command_master
+from app.sqls.agent import get_agent_stat, get_mqtt_agents, get_error_results, insert_command_master
+from app.mqtt.status import sort_key, summarize
 from app.sqls.was import get_changed_was, get_changed_web
 from wtforms import FieldList, StringField
 import sys
@@ -356,6 +357,34 @@ class MonitorApi(BaseApi):
                 ) for r in offline_recs ]
 
         return jsonify({'agent_stat':agent_stat_list, 'offline_agents':offline_list})
+
+    @expose('/mqtt_agent_stat', methods=['GET'])
+    @has_access
+    def mqtt_agent_stat(self):
+        """MQTT 수신 Agent 현황·목록 (HOWTO_019 §5.1). 모수 = 승인 ∧ OnLine ∧ 헤더 있음."""
+
+        def fmt(t):
+            return t.strftime('%Y.%m.%d %H:%M') if t else None
+
+        def landscape(r):
+            return r.landscape.name if r.landscape else 'NON'
+
+        recs = sorted(get_mqtt_agents(), key=lambda r: sort_key(r.mqtt_state, r.mqtt_since))
+
+        mqtt_agents = [{
+                'landscape': landscape(r),
+                'agent_id': r.agent_id,
+                'agent_name': r.agent_name,
+                'state': r.mqtt_state,
+                'since': fmt(r.mqtt_since),
+                'events': r.mqtt_events,
+                'last_msg': fmt(r.mqtt_last_msg),
+                'reason': r.mqtt_reason,
+                'last_checked_date': fmt(r.last_checked_date),
+            } for r in recs]
+
+        return jsonify({'mqtt_stat': summarize((landscape(r), r.mqtt_state) for r in recs),
+                        'mqtt_agents': mqtt_agents})
 
     @expose('/get_error_results', methods=['GET'])
     @has_access

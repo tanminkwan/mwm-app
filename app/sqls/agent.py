@@ -9,6 +9,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import insert, JSON
 from app.models.common import get_uuid
 from app.mqtt import get_publisher
+from app.mqtt.status import mqtt_columns
 from app.models.agent import AgCommandType, AgCommandMaster, AgCommandDetail\
     , AgResult, AgAgentGroup, AgAgent, AgFile, AgCommandHelper, AgAutorunResult
 from app.models.monitor import MoWasInstanceStatus
@@ -286,6 +287,18 @@ def get_agents():
         return recs
     else:
         return None 
+
+
+def get_mqtt_agents(now=None):
+    """MQTT 대상 Agent — 승인 ∧ OnLine ∧ 마지막 폴링에 헤더 있음 (HOWTO_019 §3)."""
+    now = now or datetime.now()
+    gap_online = now - timedelta(minutes=current_app.config.get('AGENT_OFFLINE_MINUTES', 5))
+    query = db.session.query(AgAgent).filter(
+        AgAgent.approved_yn == 'YES',
+        AgAgent.last_checked_date > gap_online,
+        AgAgent.mqtt_state.isnot(None))
+    return query.all()
+
 
 def get_agent_stat():
     now = datetime.now()
@@ -788,7 +801,12 @@ def get_result_hash(agent_id, command_id, repetition_seq):
 
     return result_hash
 
-def send_commands(agent_id, agent_version='', agent_type=''):
+def send_commands(agent_id, agent_version='', agent_type='', update_mqtt=False, mqtt_header=None):
+    """보낼 명령을 꺼내고 Agent 의 최종 확인 시각을 갱신한다.
+
+    update_mqtt=True 면 X-Mqtt-Status 헤더(mqtt_header)로 MQTT 컬럼을 같은 UPDATE 에서 갱신한다.
+    헤더가 없으면 비운다 → MQTT 모수에서 빠진다. BOOT 는 False 로 부른다 (HOWTO_019 §4.2).
+    """
 
     logging.debug(f"send_commands is called. agent_id : {agent_id} {agent_version} {agent_type}")
 
@@ -823,6 +841,9 @@ def send_commands(agent_id, agent_version='', agent_type=''):
         update_dict.update({AgAgent.agent_version:agent_version})
     if agent_type:
         update_dict.update({AgAgent.agent_type:agent_type})
+    if update_mqtt:
+        update_dict.update({getattr(AgAgent, k): v
+                            for k, v in mqtt_columns(mqtt_header, datetime.now()).items()})
 
     db.session.query(AgAgent)\
                     .filter(AgAgent.agent_id==agent_id)\

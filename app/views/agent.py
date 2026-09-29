@@ -133,7 +133,9 @@ class AgentModelView(ModelView):
     
     datamodel = SQLAInterface(AgAgent)
     list_title    = "Agent 현황"
-    list_columns  = ['agent_id', 'agent_type', 'agent_version', 'agent_name', 'agent_sub_type','c_last_checked']
+    list_columns  = ['agent_id', 'agent_type', 'agent_version', 'agent_name', 'agent_sub_type','c_last_checked',
+                     'c_mqtt_status']
+    label_columns = {'c_mqtt_status': 'MQTT'}
     list_template = 'listWithJson.html'
     list_widget = ListBlock
     extra_args = {
@@ -143,6 +145,9 @@ class AgentModelView(ModelView):
         ,{'text':'TEST','id':'toggle_bt3','bt_group':'1','onclick':'_flt_0_landscape=TEST'}
         ,{'text':'OffLine','id':'toggle_bt3','bt_group':'1','onclick':'_flt_2_last_checked_date='+(datetime.now() - timedelta(minutes=AGENT_OFFLINE_MINUTES)).strftime("%Y-%m-%d+%H:%M:%S")}
         ,{'text':'Not Approved','id':'toggle_bt4','bt_group':'1','onclick':'_flt_0_approved_yn=NO'}
+        ] + [
+            # MQTT 헤더를 보낸 Agent (mqtt_state != '-' 는 SQL 에서 NULL 을 뺀다). 다른 그룹이라 PROD 등과 겹쳐 걸 수 있다
+            {'text': 'MQTT', 'id': 'toggle_bt5', 'bt_group': '2', 'onclick': '_flt_7_mqtt_state=-'},
         ],
         'inputList':[
          {'text':'Hostname','id':'host-id','combind':'1','condition':'_flt_2_host_id=','size':20}

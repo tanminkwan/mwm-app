@@ -7,7 +7,7 @@ from sqlalchemy import Column, Text, Integer, String, ForeignKey\
 from sqlalchemy.orm import relationship
 import enum
 from markupsafe import Markup, escape
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask_appbuilder.models.mixins import FileColumn
 from flask_appbuilder.filemanager import get_file_original_name
 from flask_appbuilder.models.decorators import renders
@@ -40,6 +40,17 @@ class AgAgentGroup(Model):
     def __repr__(self):
         return self.agent_group_id
 
+
+# Agent 목록의 MQTT 배지: state → (표시, 배경색)
+MQTT_BADGES = {
+    'connected':       ('연결', '#2E8B57'),
+    'unstable':        ('불안정', '#E67E22'),
+    'never_connected': ('연결 실패', '#C0392B'),
+    'not_started':     ('미기동', '#C0392B'),
+    'unknown':         ('알 수 없음', '#808080'),
+}
+
+
 class AgAgent(Model):
     __tablename__ = "ag_agent"
 
@@ -57,6 +68,13 @@ class AgAgent(Model):
     last_checked_date      = Column(DateTime())    
     token_expiration_date  = Column(DateTime())
     refresh_token = Column(String(500))
+    # MQTT 수신 상태 — 명령 폴링의 X-Mqtt-Status 헤더 (HOWTO_019). mqtt_state 가 NULL 이면 MQTT 비대상
+    mqtt_state = Column(String(20), comment='MQTT 수신 상태 (X-Mqtt-Status). NULL = MQTT 비대상')
+    mqtt_since = Column(DateTime())
+    mqtt_events = Column(Integer)
+    mqtt_last_msg = Column(DateTime())
+    mqtt_reason = Column(String(120))
+    mqtt_raw = Column(String(300))
 
     user_id    = Column(String(50), default=get_user, nullable=False)
     create_on  = Column(DateTime(), default=datetime.now, nullable=False)    
@@ -64,6 +82,34 @@ class AgAgent(Model):
 
     def __repr__(self):
         return self.agent_id
+
+    def is_online(self, now=None):
+        if not self.last_checked_date:
+            return False
+        offline_threshold = timedelta(minutes=current_app.config.get('AGENT_OFFLINE_MINUTES', 5))
+        return (now or datetime.now()) - self.last_checked_date < offline_threshold
+
+    def is_mqtt_target(self, now=None):
+        """MQTT 대상 = 승인 ∧ OnLine ∧ 마지막 폴링에 헤더 있음 (HOWTO_019 §3)."""
+        return (self.mqtt_state is not None and self.approved_yn == YnEnum.YES
+                and self.is_online(now))
+
+    @renders('mqtt_state')
+    def c_mqtt_status(self):
+        """MQTT 대상이면 상태 배지, 아니면 빈칸. 값은 Agent 가 보낸 것이라 Markup.format 이 이스케이프한다."""
+        if not self.is_mqtt_target():
+            return Markup('')
+        label, color = MQTT_BADGES.get(self.mqtt_state, MQTT_BADGES['unknown'])
+        title = [self.mqtt_state]
+        if self.mqtt_events is not None:
+            title.append(f'events={self.mqtt_events}')
+        if self.mqtt_since:
+            title.append(f"since {self.mqtt_since:%m-%d %H:%M}")
+        title.append(f"마지막 수신 {self.mqtt_last_msg:%m-%d %H:%M}" if self.mqtt_last_msg else '수신 없음')
+        if self.mqtt_reason:
+            title.append(self.mqtt_reason)
+        return Markup('<p class="mqtt-badge" title="{}" style="background-color:{};color:#FFFFFF;'
+                      'text-align:center"><b>{}</b></p>').format(' · '.join(title), color, label)
 
     @renders('last_checked_date')
     def c_last_checked(self):

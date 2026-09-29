@@ -23,5 +23,7 @@
 #   percent_covered 의 라인 부분은 **import 만으로 38% 가 채워진다.**
 #   분기는 함수 본문 안의 갈림길이라 그렇게 부풀릴 수 없다.
 
-percent_covered = 34.40
-percent_branches_covered = 6.00
+# 2026-09-29 갱신 (HOWTO_019 이후): CI 측정 39.07 / 11.10 에서 같은 여유 0.24 를 뺐다.
+#   그 사이 테스트가 늘었는데 기준선을 올리지 않아 34.40 에 머물러 있었다.
+percent_covered = 38.83
+percent_branches_covered = 10.86

@@ -298,6 +298,26 @@
             </div>
         </div>
 
+        <!-- MQTT 수신 Agent (HOWTO_019). 대상 = 승인 ∧ OnLine ∧ X-Mqtt-Status 헤더 있음 -->
+        <div class="card" id="mqtt-stat-card">
+            <div class="card-title">
+                <h3>[MQTT 수신 Agent 현황]</h3>
+                <a href="/agentmodelview/list/?_flt_7_mqtt_state=-" class="btn" style="font-size: 14px; padding: 0.3rem 0.8rem;">Agent 목록</a>
+            </div>
+            <div class="table-wrapper">
+                <table id="mqttStat"></table>
+            </div>
+        </div>
+
+        <div class="card" id="mqtt-agent-card">
+            <div class="card-title">
+                <h3>[MQTT 수신 Agent 목록]</h3>
+            </div>
+            <div class="table-wrapper">
+                <table id="mqttAgents"></table>
+            </div>
+        </div>
+
         <!-- Config Changes Section -->
         <div class="card full-width" id="config-card">
             <div class="card-title">
@@ -467,6 +487,82 @@
             });
 
             checkTableAndHide('offline', 'offline-agent-card');
+        }
+    });
+
+    // MQTT 수신 Agent (HOWTO_019). 값은 Agent 가 보낸 것이므로 모두 이스케이프한다
+    // 속성값(title='...')에도 쓰므로 따옴표까지 바꾼다
+    function escHtml(v) {
+        var map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+        return (v == null ? '' : String(v)).replace(/[&<>"']/g, c => map[c]);
+    }
+
+    var MQTT_STATES = [
+        { id: 'connected', label: '연결', color: '#2E8B57' },
+        { id: 'unstable', label: '불안정', color: '#E67E22' },
+        { id: 'never_connected', label: '연결 실패', color: '#C0392B' },
+        { id: 'not_started', label: '미기동', color: '#C0392B' },
+        { id: 'unknown', label: '알 수 없음', color: '#808080' }
+    ];
+
+    function mqttBadge(state) {
+        var s = MQTT_STATES.find(x => x.id === state) || MQTT_STATES[MQTT_STATES.length - 1];
+        return "<span style='background-color:" + s.color + ";color:#FFFFFF;padding:1px 6px;border-radius:3px;'>" + s.label + "</span>";
+    }
+
+    function elapsed(ts) {
+        if (!ts) return '수신 없음';
+        var t = new Date(ts.replace(/\./g, '-').replace(' ', 'T'));
+        var min = Math.floor((Date.now() - t.getTime()) / 60000);
+        if (isNaN(min)) return escHtml(ts);
+        if (min < 1) return '방금';
+        if (min < 60) return min + '분 전';
+        if (min < 1440) return Math.floor(min / 60) + '시간 전';
+        return Math.floor(min / 1440) + '일 전';
+    }
+
+    $.ajax({
+        url: "/monitor/mqtt_agent_stat",
+        success: function (data) {
+            if (!data || !data.mqtt_stat) return;
+            var stats = data.mqtt_stat;
+            var agents = data.mqtt_agents || [];
+
+            if (agents.length === 0) {
+                $('#mqttStat').html("<tr><td style='color:var(--text-muted);'>MQTT 수신 Agent 없음</td></tr>");
+                $('#mqtt-agent-card').hide();
+                return;
+            }
+
+            var landscapes = ['PROD', 'TEST', 'DEV'];
+            stats.forEach(s => { if (landscapes.indexOf(s.landscape) < 0) landscapes.push(s.landscape); });
+            var rows = MQTT_STATES.concat([{ id: 'total', label: '전체' }]);
+
+            var header = "<tr><th>상태</th>" + landscapes.map(l => "<th style='text-align:right;'>" + escHtml(l) + "</th>").join('') + "<th style='text-align:right;'>전체</th></tr>";
+            $('#mqttStat').html(header);
+
+            rows.forEach(row => {
+                var tr = $("<tr><td>" + (row.id === 'total' ? row.label : mqttBadge(row.id)) + "</td></tr>");
+                var rowTotal = 0;
+                landscapes.forEach(l => {
+                    var found = stats.find(s => s.landscape === l);
+                    var val = found ? (found[row.id] || 0) : 0;
+                    tr.append("<td style='text-align:right;'>" + val + "</td>");
+                    rowTotal += val;
+                });
+                tr.append("<td style='text-align:right; font-weight:bold;'>" + rowTotal + "</td>");
+                if (row.id === 'total') tr.addClass('total-row');
+                $('#mqttStat').append(tr);
+            });
+
+            $('#mqttAgents').html("<tr><th>Landscape</th><th>Agent ID</th><th>상태</th><th>시작</th><th>끊김·에러</th><th>마지막 수신</th><th>사유</th></tr>");
+            agents.forEach(a => {
+                $('#mqttAgents').append("<tr><td>" + escHtml(a.landscape) + "</td><td title='" + escHtml(a.agent_name) + "'>" + escHtml(a.agent_id)
+                    + "</td><td>" + mqttBadge(a.state) + "</td><td>" + escHtml(a.since || '-')
+                    + "</td><td style='text-align:right;'>" + escHtml(a.events == null ? '-' : a.events)
+                    + "</td><td title='" + escHtml(a.last_msg || '') + "'>" + elapsed(a.last_msg)
+                    + "</td><td>" + escHtml(a.reason || '') + "</td></tr>");
+            });
         }
     });
 

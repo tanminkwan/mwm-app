@@ -7,5 +7,6 @@
 # 본 앱은 백그라운드 스케줄러 때문에 CI 에서 0.18%p 흔들렸다. IdP 는 로컬 3회가 소수점까지 같았지만
 # 같은 여유를 두어 **0.20%p 아래**에 둔다 (구문·분기 1개 ≈ 0.08%p, 전체 1245개).
 
-percent_covered = 85.50
-percent_branches_covered = 80.19
+# 2026-09-29 갱신: CI 측정 87.55 / 81.55 에서 같은 여유 0.20 을 뺐다.
+percent_covered = 87.35
+percent_branches_covered = 81.35

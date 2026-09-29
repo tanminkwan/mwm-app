@@ -83,7 +83,10 @@ class CommandApi(BaseApi):
         if rtn < 0:
             return jsonify({'return_code':rtn, 'message':msg}), 201
 
-        rtn , data = send_commands(agent_id, agent_version, agent_type)
+        # BOOT 에는 X-Mqtt-Status 가 원래 없다 — MQTT 상태는 주기 폴링에서만 갱신한다 (HOWTO_019)
+        rtn , data = send_commands(agent_id, agent_version, agent_type,
+                                   update_mqtt=(agent_status != 'BOOT'),
+                                   mqtt_header=request.headers.get('X-Mqtt-Status'))
 
         #최초 접속인 경우
         if agent_status == 'BOOT':
@@ -124,7 +127,9 @@ class CommandApi(BaseApi):
         if rtn < 0:
             return jsonify({'return_code':rtn, 'message':msg}), 201
 
-        rtn , data = send_commands(agent_id)
+        # 명령 폴링 — X-Mqtt-Status 헤더로 MQTT 수신 상태를 갱신한다. 없으면 비운다 (HOWTO_019)
+        rtn , data = send_commands(agent_id, update_mqtt=True,
+                                   mqtt_header=request.headers.get('X-Mqtt-Status'))
 
         db.session.commit()
 
