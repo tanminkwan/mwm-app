@@ -144,7 +144,7 @@ docker run --rm --network host \
    기존 위반은 용인하되 **새 위반은 막습니다.**
 
 ```bash
-docker run --rm -v "$PWD:/src" -w /src python:3.12.4-slim-bookworm sh -euc '
+docker run --rm -v "$PWD:/src" -w /src python:3.12.14-slim-bookworm sh -euc '
   pip install -q -r requirements-dev.txt
   flake8 . --count --select=E9,F63,F7,F82 --show-source   # 1) 차단 검사
   flake8 . --count --exit-zero --statistics -q -q          # 2) 총계 (기준선과 비교)
