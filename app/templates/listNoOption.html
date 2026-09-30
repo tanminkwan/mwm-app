@@ -27,6 +27,7 @@
     }
 </script>
 <form id="action_form" action="/mowasstatusreportmodelview/action_post" method="POST" style="display: none">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
     <input type="hidden" id="action" name="action">
 </form>
 <div style="font-size:12px;">

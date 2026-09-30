@@ -8,7 +8,7 @@
     <script src="/static/js/jquery-ui.min.js"></script>
     <script src="/static/js/moment.js"></script>
     <script src="/static/js/grid.locale-kr.js"></script>
-    <script src="/static/js/jquery.jqGrid.min.js"></script> 
+    <script src="/static/js/jquery.jqgrid.min.js"></script>
     <script src="/static/js/xlsx.full.min.js"></script>
 </head>
 
@@ -218,24 +218,26 @@
       //pager: '#pager',
       loadComplete : function(data){
 
-        for(var i=0; i<=data.records; i++) {
-          var rowData = $('#'+target).jqGrid('getRowData', i+1);
+        // 행 id 를 1..n 으로 가정하지 않는다 — free-jqgrid 는 id 가 없는 로컬 데이터에 jqg1.. 을 붙인다
+        var rowIds = $('#'+target).jqGrid('getDataIDs');
+        for(var i=0; i<rowIds.length; i++) {
+          var rowData = $('#'+target).jqGrid('getRowData', rowIds[i]);
           if(rowData.type == 'PARENT'){
-            $('#'+target).jqGrid('setCell',i+1,'name','',{color:'blue','font-weight':'bold'})
-            $('#'+target).jqGrid('setCell',i+1,'type','',{color:'blue','font-weight':'bold'})
-            $('#'+target).jqGrid('setCell',i+1,'comment','',{color:'blue','font-weight':'bold'})
+            $('#'+target).jqGrid('setCell',rowIds[i],'name','',{color:'blue','font-weight':'bold'})
+            $('#'+target).jqGrid('setCell',rowIds[i],'type','',{color:'blue','font-weight':'bold'})
+            $('#'+target).jqGrid('setCell',rowIds[i],'comment','',{color:'blue','font-weight':'bold'})
           }else if(rowData.type == 'CHILD'){
-            $('#'+target).jqGrid('setCell',i+1,'name','',{color:'green','font-weight':'bold'})
-            $('#'+target).jqGrid('setCell',i+1,'type','',{color:'green','font-weight':'bold'})
-            $('#'+target).jqGrid('setCell',i+1,'comment','',{color:'green','font-weight':'bold'})
+            $('#'+target).jqGrid('setCell',rowIds[i],'name','',{color:'green','font-weight':'bold'})
+            $('#'+target).jqGrid('setCell',rowIds[i],'type','',{color:'green','font-weight':'bold'})
+            $('#'+target).jqGrid('setCell',rowIds[i],'comment','',{color:'green','font-weight':'bold'})
           }else if(rowData.type == 'MbyN'){
-            $('#'+target).jqGrid('setCell',i+1,'name','',{color:'red','font-weight':'bold'})
-            $('#'+target).jqGrid('setCell',i+1,'type','',{color:'red','font-weight':'bold'})
-            $('#'+target).jqGrid('setCell',i+1,'comment','',{color:'red','font-weight':'bold'})
+            $('#'+target).jqGrid('setCell',rowIds[i],'name','',{color:'red','font-weight':'bold'})
+            $('#'+target).jqGrid('setCell',rowIds[i],'type','',{color:'red','font-weight':'bold'})
+            $('#'+target).jqGrid('setCell',rowIds[i],'comment','',{color:'red','font-weight':'bold'})
           }else if(rowData.type == 'BIND FUNCTION'){
-            $('#'+target).jqGrid('setCell',i+1,'name','',{color:'brown','font-style':'italic'})
-            $('#'+target).jqGrid('setCell',i+1,'type','',{color:'brown','font-style':'italic'})
-            $('#'+target).jqGrid('setCell',i+1,'comment','',{color:'brown','font-style':'italic'})
+            $('#'+target).jqGrid('setCell',rowIds[i],'name','',{color:'brown','font-style':'italic'})
+            $('#'+target).jqGrid('setCell',rowIds[i],'type','',{color:'brown','font-style':'italic'})
+            $('#'+target).jqGrid('setCell',rowIds[i],'comment','',{color:'brown','font-style':'italic'})
           }
         }
       }

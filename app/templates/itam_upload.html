@@ -7,7 +7,7 @@
     </div>
     <div class="panel-body">
         <form action="{{ url_for('ItExcelImportView.upload') }}" method="post" enctype="multipart/form-data">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
             <div class="form-group">
                 <label for="type">데이터 유형</label>
                 <select name="type" id="type" class="form-control" required>

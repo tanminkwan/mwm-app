@@ -3,6 +3,7 @@
 
 {% block content %}
 <link rel="stylesheet" href="/static/css/summernote-lite.css" />
+<script src="/static/js/purify.min.js"></script>
 <script src="/static/js/summernote-lite.js"></script>
 <script src="/static/js/lang/summernote-ko-KR.js"></script>
 <style>
@@ -72,6 +73,9 @@
 {% block add_tail_js %}
 <script>
     $(document).ready(function () {
+        // 편집기는 불러온 HTML 을 편집 영역에 넣는 순간 onerror 등을 실행한다 — 먼저 거른다 (HOWTO_020 §5)
+        var summerField = $('#{{summer_column}}');
+        summerField.val(DOMPurify.sanitize(summerField.val(), {ADD_ATTR: ['target']}));
         $('#{{summer_column}}').summernote({
             toolbar: [
                 ['style', ['style']],

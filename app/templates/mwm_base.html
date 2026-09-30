@@ -1,0 +1,7 @@
+{% extends 'appbuilder/baselayout.html' %}
+{#- 모든 화면의 공통 레이아웃. CSRF 토큰을 내보내고, 같은 출처로 보내는 AJAX·fetch 에 붙인다 (HOWTO_020 §6) -#}
+{% block head_js %}
+    {{ super() }}
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script src="/static/js/mwm_csrf.js"></script>
+{% endblock %}

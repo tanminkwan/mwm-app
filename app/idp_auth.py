@@ -38,7 +38,13 @@ def login():
     # Build redirect URI: e.g., http://localhost:8000/idp/callback
     redirect_uri = url_for('idp_auth.auth_callback', _external=True)
     current_app.logger.info(f"OAUTH LOGIN: redirect_uri={redirect_uri}")
-    return oauth.mwm_idp.authorize_redirect(redirect_uri)
+    try:
+        return oauth.mwm_idp.authorize_redirect(redirect_uri)
+    except Exception:
+        # IdP 가 죽었으면 500 대신 로그인 화면으로 (원인은 로그에만)
+        current_app.logger.exception("IDP login failed")
+        flash("IDP Login is not available. Please try again later.", "danger")
+        return redirect(url_for("AuthDBView.login"))
 
 @idp_auth_bp.route('/callback')
 def auth_callback():
@@ -64,6 +70,8 @@ def auth_callback():
         login_user(user, remember=False)
         return redirect(appbuilder.get_url_for_index)
         
-    except Exception as e:
-        flash(f"IDP Login failed: {str(e)}", "danger")
+    except Exception:
+        # 예외 문구는 화면에 내지 않는다 (내부 주소·토큰 오류 내용이 섞인다)
+        current_app.logger.exception("IDP callback failed")
+        flash("IDP Login failed.", "danger")
         return redirect(url_for("AuthDBView.login"))

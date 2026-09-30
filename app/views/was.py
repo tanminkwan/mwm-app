@@ -1,5 +1,5 @@
 from flask import g, render_template, Flask, request, jsonify\
-     , send_file, redirect, url_for, render_template_string, flash
+     , send_file, redirect, url_for, render_template_string, flash, abort
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_appbuilder import BaseView, ModelView, ModelRestApi, MultipleView, MasterDetailView
 from flask_appbuilder import expose, has_access
@@ -14,14 +14,14 @@ from app.models.was import MwServer, MwWas, MwWasInstance, MwWeb, MwWebVhost, Mw
     , MwWebServer, MwWebUri, MwWaschangeHistory, MwWebchangeHistory\
     , MwBizCategory, MwAppMaster, MwDBMaster, MwWebDomain, MwWebSsl\
     , MwEtcSslDomain
-from app.models.knowledge import UtTag
+from app.models.knowledge import UtTag, UtHtmlContent
 from app.sqls.was import get_was_instance_id, get_landscape
 from app.sqls.relationship import get_was_relationship, get_web_relationship
 from app.sqls.agent import insert_command_master, get_agent, get_agents, create_connect_ssl_for_httplistener, create_connect_ssl_real_ip_for_httplistener, create_connect_ssl_real_ip
 from app.sqls.batch import create_ssl_info, re_register_web_from_text, re_register_was_from_text
 from app.sqls.monitor import select_row, select_item, select_items
 from .common import FilterStartsWithFunction, FilterNotNull, FilterIsNull, \
-    get_mw_user, get_userid, ShowWithIds, ListAdvanced
+    get_mw_user, get_userid, ShowWithIds, ListAdvanced, visible_to_current_user
 
 import json
 # Excel
@@ -1161,6 +1161,12 @@ class ShortQueries(BaseApi):
 #             return jsonify({'return_code':1}), 201
 
 
+# /json/htmlviewer 가 읽을 수 있는 (테이블, 본문 컬럼, 제목 컬럼) — getHtmlButton 호출과 맞춘다
+HTML_VIEWER_FIELDS = {
+    ('ut_html_content', 'content_html', 'content_name'): UtHtmlContent,
+}
+
+
 class JsonView(BaseView):
 
     route_base = '/json'
@@ -1170,10 +1176,17 @@ class JsonView(BaseView):
     @has_access
     def htmlviewer(self, table_name, column_name, tcolumn_name, key):
 
-        html, _ = select_item(table_name, column_name, {'id':key})
-        title, _ = select_item(table_name, tcolumn_name, {'id':key})
+        # 주소의 테이블·컬럼 이름을 그대로 쓰면 아무 테이블이나 읽힌다 (예: ab_user.password).
+        # getHtmlButton 이 만드는 조합만 받고, 목록 화면과 같은 그룹 기준으로 거른다.
+        model = HTML_VIEWER_FIELDS.get((table_name, column_name, tcolumn_name))
+        if model is None or not key.isdigit():
+            abort(404)
 
-        return jsonify({'html':html[0], 'title':title[0]})
+        row = visible_to_current_user(model).filter(model.id == int(key)).first()
+        if row is None:
+            abort(404)
+
+        return jsonify({'html':getattr(row, column_name), 'title':getattr(row, tcolumn_name)})
 
     @expose('/jsonviewer/<category>/<key>', methods=['GET'])
     @has_access

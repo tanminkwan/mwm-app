@@ -1,0 +1,23 @@
+# ZAP baseline 규칙 — .github/scripts/zap_baseline.sh 가 읽는다 (HOWTO_020 §6).
+# 형식: <규칙 id><TAB><IGNORE|WARN|FAIL|OUTOFSCOPE><TAB><설명 또는 URL 정규식>. 적지 않은 규칙은 WARN 이고 WARN 이 하나라도 있으면 CI 가 실패한다.
+# 여기 넣는 것은 받아들이기로 한 것뿐이다. 이유를 함께 적는다.
+#
+# Flask-AppBuilder 가 들고 오는 Bootstrap 3.4.1 (CVE-2024-6485·CVE-2025-1647). 앱은 공격자 입력을 data-loading-text·툴팁/팝오버에 넣지 않는다.
+# 이 파일만 뺀다 — 다른 JS 라이브러리의 취약점은 계속 잡힌다
+10003	OUTOFSCOPE	.*/static/appbuilder/js/bootstrap\.min\.js
+# IdP 로 넘기는 표준 리다이렉트 본문. 민감 정보 없음
+10044	OUTOFSCOPE	.*/idp/login.*
+# CSP 는 frame-ancestors·object-src·base-uri 만 둔다 — 인라인 스크립트가 많아 script-src 는 Report-Only 로 따로 다룬다. CSP 헤더 자체가 빠지면 10038 이 잡는다
+10055	IGNORE	CSP: 지시어 부족 (script-src 는 별도 task)
+# 교차 출처 격리(COEP·COOP·CORP)는 쓰지 않는다 — SharedArrayBuffer 등이 필요 없다
+90004	IGNORE	Cross-Origin-*-Policy 헤더 없음
+# --- 정보 수준 (위험이 아니라 관찰) ---
+# 주석 속 SELECT·FROM·ADMIN 같은 단어 — Flask-AppBuilder·vendored JS 의 주석
+10027	IGNORE	Suspicious Comments
+# 캐시하지 않는 응답 — 사용자별 화면이라 의도한 동작
+10049	IGNORE	Non-Storable Content
+# 스파이더 안내 (AJAX 스파이더를 쓰라는 참고)
+10109	IGNORE	Modern Web Application
+# 로그인 요청·세션 응답을 찾았다는 참고 (인증 설정용 힌트)
+10111	IGNORE	Authentication Request Identified
+10112	IGNORE	Session Management Response Identified

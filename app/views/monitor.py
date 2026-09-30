@@ -8,7 +8,7 @@ from flask_appbuilder.actions import action
 from flask_appbuilder.api import ModelRestApi, BaseApi, expose, safe, rison, protect
 from flask_appbuilder.models.sqla.filters import get_field_setup_query, BaseFilter\
     , FilterEqualFunction, FilterNotEqual, FilterInFunction, FilterStartsWith, FilterEqual
-from app import appbuilder, db, WAS_STATUS
+from app import appbuilder, db, WAS_STATUS, scheduler
 from flask_jwt_extended import create_access_token, create_refresh_token
 #from .models import Server, JeusContainer, Host
 from app.models.monitor import MoWasStatusTemplate, MoWasStatusReport, MoGridConfig, MoWasInstanceStatus
@@ -234,10 +234,22 @@ class MonitorApi(BaseApi):
     @has_access
     def jobSchedulerList(self):
 
-        return render_template('show_jsonviewer.html', url='/scheduler/jobs'\
+        return render_template('show_jsonviewer.html', url='/monitor/jobs.json'\
             , title='정기 JOB 목록'
             , base_template=appbuilder.base_template, appbuilder=appbuilder)
     
+    @expose('/jobs.json', methods=['GET'])
+    @has_access
+    def jobs_json(self):
+        """정기 JOB 목록 (읽기 전용). Flask-APScheduler REST API 는 끄고 이것만 쓴다."""
+        return jsonify([dict(
+            id=job.id,
+            name=job.name,
+            func=job.func_ref,
+            trigger=str(job.trigger),
+            next_run_time=job.next_run_time.isoformat() if job.next_run_time else None,
+        ) for job in scheduler.get_jobs()])
+
     @expose('/getAccessToken', methods=['GET'])
     @has_access
     def getAccessToken(self):

@@ -55,6 +55,8 @@ SECRET_KEY = get_required_secret('MWM_SECRET_KEY')
 # SQLALCHEMY_DATABASE_URI = 'postgresql://root:password@localhost/myapp'
 # 계정·비밀번호를 담으므로 기본값을 두지 않는다
 SQLALCHEMY_DATABASE_URI = get_required_secret('MWM_DATABASE_URI', min_bytes=1)
+# DB 가 재기동되면 풀의 연결이 끊긴 채 남아 한동안 500 이 난다 — 꺼내 쓸 때 살아 있는지 먼저 확인한다
+SQLALCHEMY_ENGINE_OPTIONS = {'pool_pre_ping': True}
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 
 # Redis
@@ -65,6 +67,16 @@ SESSION_TYPE = 'redis'
 #SESSION_PERMANENT = False
 SESSION_PERMANENT = True # 서버 재기동 후에도 token 유효하도록
 SESSION_USE_SIGNER = True
+# 세션·remember 쿠키 (ZAP baseline, HOWTO_020 §6). Secure 는 모든 접속이 https 일 때만 켠다 —
+# http://<IP>:8000 으로 직접 접속하는 곳이 있으면 켜는 순간 로그인이 안 된다
+# CSRF 토큰은 세션이 살아 있는 동안 유효하게 한다 — 기본 1시간이면 화면을 오래 열어 둔 뒤 저장할 때 실패한다
+WTF_CSRF_TIME_LIMIT = None
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = os.getenv('MWM_SESSION_COOKIE_SECURE', 'false').lower() == 'true'
+REMEMBER_COOKIE_SAMESITE = 'Lax'
+REMEMBER_COOKIE_HTTPONLY = True
+REMEMBER_COOKIE_SECURE = SESSION_COOKIE_SECURE
 SESSION_REDIS = redis.from_url(redis_url)
 
 # PlantUML
@@ -91,7 +103,7 @@ CSRF_ENABLED = True
 # GLOBALS FOR APP Builder
 # ------------------------------
 # Uncomment to setup Your App name
-APP_NAME = "미들웨어관리소(VER:20260929.003)"
+APP_NAME = "미들웨어관리소(VER:20260930.015)"
 PREFERRED_URL_SCHEME = 'https'
 
 # Uncomment to setup Setup an App icon
@@ -159,7 +171,9 @@ IMG_UPLOAD_URL = "/static/uploads/"
 # Setup image size default is (300, 200, True)
 # IMG_SIZE = (300, 200, True)
 
-FAB_API_SWAGGER_UI = True
+# Swagger UI(/swagger/v1) 번들에 오래된 DOMPurify 가 들어 있다 (ZAP High). 기본은 끄고, API 문서를 볼 때만
+# MWM_SWAGGER_UI=true 로 켜서 재기동한다. 켜도 Admin 만 연다 (can_show on SwaggerView). HOWTO_020 §6
+FAB_API_SWAGGER_UI = os.getenv('MWM_SWAGGER_UI', 'false').lower() == 'true'
 # API 오류 응답에 스택트레이스를 싣지 않는다. 개발 때만 켠다 (WS-1-7)
 FAB_API_SHOW_STACKTRACE = os.getenv('FAB_API_SHOW_STACKTRACE', 'False').lower() in ('true', '1', 'yes')
 
@@ -202,7 +216,9 @@ KROKI_URL     = os.getenv('KROKI_URL', 'http://mwm-kroki:8000')
 #   서명 검증은 그대로이며 타입 검사만 끄는 것이다.
 #   FAB 5.2.3 업그레이드(WS-2-3) 때 FAB 가 str 로 바꿨는지 재확인하고 제거를 검토한다.
 JWT_VERIFY_SUB = False
-SCHEDULER_API_ENABLED = True
+# Flask-APScheduler REST API(/scheduler/...) 는 인증 없이 작업을 추가·실행하게 해 준다 — 실행할 함수를
+# 문자열로 받으므로 원격 코드 실행이 된다. 항상 끈다. 작업 목록 화면은 /monitor/jobs.json 을 쓴다 (HOWTO_020 §6)
+SCHEDULER_API_ENABLED = False
 AGENT_OFFLINE_MINUTES = 5
 
 # IDP Configuration

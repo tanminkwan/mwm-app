@@ -47,6 +47,7 @@
 
 ## 📂 주요 가이드 (Documentation)
 - **[테스트 작성 가이드](docs/HOWTO_018_writing_tests.md)**: 실행 방법, 특성화 테스트 패턴, 밟았던 함정, CI 관문.
+- **[SBOM·third-party 라이선스](docs/HOWTO_020_sbom_and_licenses.md)**: `sbom/*.cdx.json`(CycloneDX)·[`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md) 생성, 라이선스 검토, vendored JS 취약점.
 - **[Agent MQTT 수신 상태](docs/HOWTO_019_agent_mqtt_status.md)**: `X-Mqtt-Status` 헤더 계약, MQTT 대상 모수, 대시보드·Agent 목록, 운영 ALTER SQL.
 - **[Email API 연동 가이드 (초보용)](docs/HOWTO_010_email_api_guide.md)**: 토큰 발급부터 Python 연동 샘플까지 포함.
 - **[비상 대응 가이드 (Emergency Response)](docs/emergency_response.md)**: DB 세션 정리 및 컨테이너 복구 절차.
@@ -99,6 +100,12 @@ nginx 가 도메인별로 나눠 줍니다(자체 서명 인증서라 브라우�
 | 앱 | https://app.mwm.local:20443 (직접: http://localhost:8000) |
 | IDP (SSO) | https://idp.mwm.local:20443 |
 | MinIO 콘솔 | https://minio.mwm.local:20443 |
+
+이 compose 는 개발용이라 **모든 포트를 이 PC 안(`127.0.0.1`)에만 엽니다.** 다른 PC(Agent 포함)에서 접속하게 하려면
+`docker-compose.yml` 의 `mwm-nginx` 포트만 `"20443:443"` 처럼 바꾸고, 앱·DB·MinIO 포트는 열지 마십시오.
+
+API 문서(Swagger UI, `/swagger/v1`)는 기본으로 꺼져 있습니다. 볼 때만 `.env` 에 `MWM_SWAGGER_UI=true` 를 넣고
+`docker compose up -d --force-recreate mwm-app` 으로 다시 띄우십시오 (Admin 만 열 수 있습니다).
 
 ### 테스트
 
@@ -183,3 +190,5 @@ CI(`.github/workflows/python-app.yml`)가 같은 명령을 돌립니다.
 ## 📄 라이선스
 
 [MIT](LICENSE)
+
+함께 배포되는 외부 구성요소의 라이선스는 [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md), SBOM(CycloneDX)은 [`sbom/`](sbom/) 에 있습니다 — [HOWTO_020](docs/HOWTO_020_sbom_and_licenses.md).

@@ -13,13 +13,11 @@
 <script>
     function renderJson(id,title) {
         try {
-            //var input = $("[id='"+id+"']").html();
-            var input = eval('('+$("[id='"+id+"']").html().replace(/None/g, 'null')+')');
-            //var input = JSON.stringify({'aaa':'bbb'});
-            //var input = "{\'aaa\':\'bbb\'}";
+            // 위젯이 JSON 으로 그린다 (widgets/showWithIds.html). 화면의 글자를 코드로 실행하지 않는다
+            var input = JSON.parse($("[id='"+id+"']").text());
         }
         catch (error) {
-            return alert("Cannot eval JSON: " + error);
+            return alert("Cannot parse JSON: " + error);
         }
         $('#json-renderer').jsonViewer(input, "");
         $('#json-title').text("["+title+"]");

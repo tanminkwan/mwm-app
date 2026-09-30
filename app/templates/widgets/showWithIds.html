@@ -5,7 +5,8 @@
 {%- macro render_column(item) -%}
     {%- set formatter = formatters_columns.get(item) -%}
     {%- set v = value_columns[include_columns.index(item)] -%}
-    {{ formatter(v) if formatter else v }}
+    {#- dict 는 JSON 으로 그린다 — showWithJson.html 이 eval 대신 JSON.parse 로 읽는다 (HOWTO_020 §6) -#}
+    {%- if formatter -%}{{ formatter(v) }}{%- elif v is mapping -%}{{ v|tojson }}{%- else -%}{{ v }}{%- endif -%}
 {%- endmacro -%}
 
 {% block columns %}

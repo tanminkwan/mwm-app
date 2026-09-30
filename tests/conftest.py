@@ -60,7 +60,6 @@ TEST_EMAIL    = os.getenv('MWM_TEST_EMAIL', 'pytest-admin@example.com')
 def app():
     flask_app.config.update({
         'TESTING': True,
-        'SCHEDULER_API_ENABLED': True,
         'WTF_CSRF_ENABLED': False,
     })
 

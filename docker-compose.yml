@@ -16,7 +16,7 @@ services:
       - POSTGRES_APP_PASSWORD=${MWM_DB_PASSWORD:?set MWM_DB_PASSWORD in .env}
       - PGDATA=/var/lib/postgresql/data/pgdata
     ports:
-      - '5433:5432'
+      - '127.0.0.1:5433:5432'
     volumes:
       # DB 데이터 디렉터리. 필수 — 기본값이 있으면 운영에서 빠뜨렸을 때 빈 DB 로 조용히 뜬다 (WS-4-8)
       - ${MWM_DB_DATA_DIR:?set MWM_DB_DATA_DIR in .env}:/var/lib/postgresql/data
@@ -34,8 +34,8 @@ services:
     container_name: mwm-minio
     image: minio/minio
     ports:
-      - '9000:9000'
-      - '9001:9001'
+      - '127.0.0.1:9000:9000'
+      - '127.0.0.1:9001:9001'
     environment:
       - MINIO_CONFIG_ENV_FILE=/etc/config.env
       # OIDC 클라이언트 비밀은 minio_config.env 에 두지 않고 여기서 준다.
@@ -50,10 +50,6 @@ services:
       - ./certs/nginx/mwm_local.crt:/root/.minio/certs/CAs/mwm_local.crt:ro
     command: server --console-address ":9001"
     extra_hosts:
-      - "app.mwm.local:host-gateway"
-      - "idp.mwm.local:host-gateway"
-      - "minio.mwm.local:host-gateway"
-      - "s3.mwm.local:host-gateway"
       - "mqtt-broker.local:host-gateway"
   # 번들 MinIO 에 앱용 키·버킷을 만든다 (1회 실행 후 종료). 이미 있으면 건너뛴다 (TASK 1-4)
   mwm-minio-init:
@@ -79,7 +75,7 @@ services:
       mwm-db:
         condition: service_healthy
     ports:
-      - "5000:5000"
+      - "127.0.0.1:5000:5000"
     environment:
       TZ: Asia/Seoul
       OIDC_ISSUER: "https://idp.mwm.local:20443"
@@ -97,10 +93,6 @@ services:
     links:
       - mwm-db
     extra_hosts:
-      - "app.mwm.local:host-gateway"
-      - "idp.mwm.local:host-gateway"
-      - "minio.mwm.local:host-gateway"
-      - "s3.mwm.local:host-gateway"
       - "mqtt-broker.local:host-gateway"
 
   mwm-app:
@@ -116,12 +108,16 @@ services:
       mwm-kroki:
         condition: service_started
     ports:
-      - 8000:8000
+      - 127.0.0.1:8000:8000
     environment:
       TZ: Asia/Seoul
       MWM_DATABASE_URI: "postgresql://${MWM_DB_USER:-mwm}:${MWM_DB_PASSWORD:?set MWM_DB_PASSWORD in .env}@mwm-db:5432/mw"
       # 세션·JWT 서명 키. 필수 — 없거나 32바이트 미만이면 앱이 기동하지 않는다
       MWM_SECRET_KEY: ${MWM_SECRET_KEY:-}
+      # 모든 접속이 https(nginx) 일 때만 true — http://<IP>:8000 직접 접속이 있으면 로그인이 안 된다
+      MWM_SESSION_COOKIE_SECURE: ${MWM_SESSION_COOKIE_SECURE:-false}
+      # API 문서(/swagger/v1)를 볼 때만 true 로 켜고 재기동한다 (Admin 만 연다)
+      MWM_SWAGGER_UI: ${MWM_SWAGGER_UI:-false}
       REDIS_URL: redis://mwm-redis:6379/0
       AWS_URL: http://mwm-minio:9000
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set AWS_ACCESS_KEY_ID in .env}
@@ -161,10 +157,6 @@ services:
       - mwm-redis
       - mwm-kroki
     extra_hosts:
-      - "app.mwm.local:host-gateway"
-      - "idp.mwm.local:host-gateway"
-      - "minio.mwm.local:host-gateway"
-      - "s3.mwm.local:host-gateway"
       - "mqtt-broker.local:host-gateway"
 
   mwm-kroki:
@@ -173,7 +165,7 @@ services:
     environment:
       - KROKI_MERMAID_HOST=mwm-kroki-mermaid
     ports:
-      - "8081:8000"
+      - "127.0.0.1:8081:8000"
 
   mwm-kroki-mermaid:
     container_name: mwm-kroki-mermaid
@@ -182,9 +174,18 @@ services:
   mwm-nginx:
     container_name: mwm-nginx
     image: nginx:stable-alpine
+    # 컨테이너끼리는 *.mwm.local 을 nginx 로 바로 찾는다. 호스트 포트가 127.0.0.1 에만 열려
+    # host-gateway 로는 닿지 않기 때문이다. nginx 는 안에서도 20443·20080 을 받는다 (nginx.conf)
+    networks:
+      default:
+        aliases:
+          - app.mwm.local
+          - idp.mwm.local
+          - minio.mwm.local
+          - s3.mwm.local
     ports:
-      - "20080:80"
-      - "20443:443"
+      - "127.0.0.1:20080:80"
+      - "127.0.0.1:20443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./certs/nginx:/etc/nginx/certs:ro
@@ -192,10 +193,6 @@ services:
       - mwm-app
       - mwm-idp
     extra_hosts:
-      - "app.mwm.local:host-gateway"
-      - "idp.mwm.local:host-gateway"
-      - "minio.mwm.local:host-gateway"
-      - "s3.mwm.local:host-gateway"
       - "mqtt-broker.local:host-gateway"
 
 volumes:

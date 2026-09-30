@@ -1,5 +1,6 @@
 {% extends "appbuilder/base.html" %}
 {% block content %}
+<script src="/static/js/purify.min.js"></script>
 <style>
     table,
     th,
@@ -79,9 +80,11 @@
             <button onclick="copy()">Copy</button>
             {% endif %}
             <div id=content>
-                <div id=content-html style="border: solid 10px white;">
-                    {{html|safe}}
-                </div>
+                <div id=content-html style="border: solid 10px white;"></div>
+                <script>
+                    // 저장된 HTML 을 그대로 넣지 않는다 — 요청을 직접 보내면 script·이벤트 속성도 저장된다 (HOWTO_020 §5)
+                    document.getElementById('content-html').innerHTML = DOMPurify.sanitize({{ html|tojson }}, {ADD_ATTR: ['target']});
+                </script>
             </div>
         </td>
     </tr>

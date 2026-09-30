@@ -7,6 +7,7 @@
 <script src="/static/js/jquery-ui.min.js"></script>
 <script src="/static/js/jquery.flowchart.js"></script>
 <script src="/static/js/moment.js"></script>
+<script src="/static/js/purify.min.js"></script>
 
 <link href="/static/css/jquery.json-viewer.css" type="text/css" rel="stylesheet" />
 <link href="/static/css/jquery.bpopup.css" type="text/css" rel="stylesheet" />
@@ -46,7 +47,8 @@
         catch (error) {
             return alert("Cannot eval JSON: " + error);
         }
-        $('#html-renderer').html(input);
+        // jQuery .html() 은 <script> 까지 실행한다 — 저장된 HTML 은 걸러서 넣는다
+        $('#html-renderer').html(DOMPurify.sanitize(input, {ADD_ATTR: ['target']}));
     };
     function getJson(param1, param2) {
         $.ajax({

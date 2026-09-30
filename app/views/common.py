@@ -148,6 +148,18 @@ class FilterGroupRelation(BaseFilter):
 
         return query.filter(or_(has_matching, has_none, is_mine))
 
+
+def visible_to_current_user(model, relation='ut_kmgroup'):
+    """목록 화면의 base_filters(FilterGroupRelation + get_group_list) 와 같은 기준으로 거른 query.
+
+    id 로 한 건을 읽는 경로가 목록의 그룹 필터를 건너뛰지 않게 한다.
+    """
+    from flask_appbuilder.models.sqla.interface import SQLAInterface
+    from app import db
+    query = db.session.query(model)
+    return FilterGroupRelation(relation, SQLAInterface(model)).apply(query, get_group_list)
+
+
 class FilterIsNull(BaseFilter):
     name = "Is null or empty"
     arg_name = "null"

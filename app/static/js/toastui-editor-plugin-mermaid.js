@@ -20,7 +20,8 @@
         mermaid.initialize({
             startOnLoad: false,
             theme: 'default',
-            securityLevel: 'loose'
+            // 'loose' 는 라벨의 HTML·click 핸들러를 허용해 문서에 넣은 다이어그램으로 스크립트를 실행할 수 있다 (HOWTO_020 §6)
+            securityLevel: 'strict'
         });
     }
 
@@ -44,6 +45,15 @@
 
     var _id = 0;
 
+    // 오류 문구에는 사용자가 쓴 다이어그램 코드가 섞인다 — HTML 로 넣지 않는다
+    function showError(el, err) {
+        var pre = document.createElement('pre');
+        pre.style.cssText = 'color:#e74c3c;background:#fdf2f2;padding:10px;border-radius:4px;';
+        pre.textContent = 'Mermaid Error: ' + ((err && err.message) || String(err));
+        el.innerHTML = '';
+        el.appendChild(pre);
+    }
+
     function renderMermaidEl(containerId, code) {
         setTimeout(function () {
             var el = document.getElementById(containerId);
@@ -57,8 +67,7 @@
                     result.then(function (res) {
                         el.innerHTML = res.svg;
                     }).catch(function (err) {
-                        el.innerHTML = '<pre style="color:#e74c3c;background:#fdf2f2;padding:10px;border-radius:4px;">Mermaid Error: ' +
-                            (err.message || String(err)) + '</pre>';
+                        showError(el, err);
                     });
                 } else if (typeof result === 'string') {
                     el.innerHTML = result;
@@ -70,8 +79,7 @@
                         el.innerHTML = svgCode;
                     });
                 } catch (err2) {
-                    el.innerHTML = '<pre style="color:#e74c3c;background:#fdf2f2;padding:10px;border-radius:4px;">Mermaid Error: ' +
-                        (err2.message || String(err2)) + '</pre>';
+                    showError(el, err2);
                 }
             }
         }, 200);

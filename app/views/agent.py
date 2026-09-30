@@ -17,7 +17,7 @@ from .common import FilterStartsWithFunction, get_mw_user\
     , ReadOnlyField, RequiredOnContidion, ValidateBatchFunctionName
 from app.sqls.agent import cancel_commands, create_command_detail\
     , update_result_status, broadcast_callback_registry, flush_mqtt_pending
-from app.models.common import PeriodicTypeEnum
+from app.models.common import PeriodicTypeEnum, TargetToSendEnum
 from sqlalchemy import event
 
 from wtforms import Form, StringField
@@ -97,6 +97,26 @@ def _force_immediate_for_mqtt(target):
 @db.event.listens_for(AgCommandMaster, 'before_insert')
 def force_immediate_for_mqtt_on_insert(mapper, connection, target):
     _force_immediate_for_mqtt(target)
+
+
+def _force_result_receiver_server(target):
+    """결과 받는 곳은 SERVER 로 고정한다.
+
+    Agent 는 결과를 REST 로만 보낸다. MQTT 는 명령을 내려보내는 채널(command_sender)이고,
+    result_receiver 가 같은 enum 을 써서 고를 수 있었을 뿐이다 — 예전 Agent 는
+    result_receiver=MQTT 명령의 결과를 어디로도 보내지 않았다.
+    """
+    target.result_receiver = TargetToSendEnum.SERVER
+
+
+@db.event.listens_for(AgCommandMaster, 'before_insert')
+def force_result_receiver_on_insert(mapper, connection, target):
+    _force_result_receiver_server(target)
+
+
+@db.event.listens_for(AgCommandMaster, 'before_update')
+def force_result_receiver_on_update(mapper, connection, target):
+    _force_result_receiver_server(target)
 
 
 @db.event.listens_for(AgCommandMaster, 'before_update')
@@ -358,7 +378,7 @@ class CommandMasterModelView(ModelView):
 
     add_columns  = ['command_id', 'ag_command_type', 'broadcast_callback', 'ag_agent', 'ag_agent_group', 'periodic_type'\
                     , 'command_sender', 'time_to_exe', 'interval_type', 'cycle_to_exe', 'time_to_stop'\
-                    , 'additional_params', 'result_receiver','target_object']
+                    , 'additional_params', 'target_object']
 
     edit_columns  = ['command_id', 'ag_command_type', 'broadcast_callback', 'ag_agent', 'ag_agent_group', 'periodic_type'\
                     , 'command_sender', 'time_to_exe', 'interval_type', 'cycle_to_exe', 'time_to_stop'\

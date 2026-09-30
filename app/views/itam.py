@@ -1,5 +1,4 @@
 from flask import g, request, redirect, flash, url_for
-from flask_wtf.csrf import generate_csrf
 from flask_appbuilder import ModelView, BaseView, expose, has_access
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from .common import get_mw_user
@@ -140,7 +139,7 @@ class ItExcelImportView(BaseView):
                 
             return redirect(url_for(".upload"))
             
-        return self.render_template("itam_upload.html", csrf_token=generate_csrf())
+        return self.render_template("itam_upload.html")
 
     def import_was(self, df):
         mapping = resolve_columns(df.columns, WAS_COLUMNS)
@@ -280,7 +279,7 @@ class ItamCompareView(BaseView):
     @expose('/list')
     @has_access
     def list(self):
-        return self.render_template('itam_compare.html', csrf_token=generate_csrf())
+        return self.render_template('itam_compare.html')
 
 
 # ============================================================

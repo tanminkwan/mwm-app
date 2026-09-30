@@ -1,4 +1,4 @@
-from flask import g, redirect, render_template, Response, send_file, request, jsonify
+from flask import g, redirect, render_template, Response, send_file, request, jsonify, abort
 from flask_babel import lazy_gettext
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_appbuilder.models.sqla.filters import FilterStartsWith
@@ -13,8 +13,8 @@ from app.models.knowledge import UtTag, UtTagKm, UtFile, UtResource, UtResourceA
     , UtMdContent, UtKmGroup
 from app.models.common import get_user, get_date, get_uuid
 from .common import FilterStartsWithFunction, FilterContainsFunction, FilterGroupMulti, FilterGroupRelation\
-    , TagType, TagMustContains, ListAdvanced, ShowWithIds, get_group_str, get_group_list, GroupSelectField
-from app.sqls.monitor import select_row
+    , TagType, TagMustContains, ListAdvanced, ShowWithIds, get_group_str, get_group_list, GroupSelectField\
+    , visible_to_current_user
 from app.mail_sender import send_mail, get_emails_from_tags, get_attachments_from_s3, convert_md_to_html
 from app.file_manager.s3.filemanager import S3FileManager, S3FileUploadField
 from datetime import datetime
@@ -382,7 +382,10 @@ class UtApi(BaseApi):
         update_on = ''
         files = []
 
-        row, _ = select_row('ut_html_content',{'id':int(param)})
+        # 목록과 같은 그룹 기준 — id 를 바꿔 다른 그룹 문서를 열지 못하게 한다 (HOWTO_020 §6)
+        row = visible_to_current_user(UtHtmlContent).filter(UtHtmlContent.id == int(param)).first()
+        if row is None:
+            abort(404)
 
         if row:
             title = row.content_name
@@ -416,7 +419,9 @@ class UtApi(BaseApi):
         update_on = ''
         files = []
 
-        row, _ = select_row('ut_md_content',{'id':int(param)})
+        row = visible_to_current_user(UtMdContent).filter(UtMdContent.id == int(param)).first()
+        if row is None:
+            abort(404)
 
         if row:
             title = row.content_name
@@ -446,9 +451,11 @@ class UtApi(BaseApi):
     @has_access
     def mddownload(self, content_id):
 
-        row, _ = select_row('ut_md_content',{'content_id':content_id})
+        row = visible_to_current_user(UtMdContent).filter(UtMdContent.content_id == content_id).first()
+        if row is None:
+            abort(404)
 
-        md = row.content_md if row else ''
+        md = row.content_md or ''
 
         return Response(md, 
             mimetype="text/plain",
@@ -513,7 +520,7 @@ class UtApi(BaseApi):
     def send_html_email(self, content_id):
         """Send email for a specific HtmlContent from the show page."""
         from premailer import transform
-        row, _ = select_row('ut_html_content', {'id': content_id})
+        row = visible_to_current_user(UtHtmlContent).filter(UtHtmlContent.id == content_id).first()
         if not row:
             return jsonify(error='Content not found'), 404
 
@@ -541,7 +548,7 @@ class UtApi(BaseApi):
     @has_access
     def send_md_email(self, content_id):
         """Send email for a specific MdContent from the show page."""
-        row, _ = select_row('ut_md_content', {'id': content_id})
+        row = visible_to_current_user(UtMdContent).filter(UtMdContent.id == content_id).first()
         if not row:
             return jsonify(error='Content not found'), 404
 
