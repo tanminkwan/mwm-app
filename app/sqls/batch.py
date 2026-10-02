@@ -347,6 +347,12 @@ for old_name, new_func in [
 ]:
     batch_function_registry[old_name] = new_func.__doc__ or old_name
 
+@batch_function
+def notify_ssl_cert_expiry(params=''):
+    """SSL 인증서 만료 주의 메일 (파라미터 {"dday": [60, 30, 7], "last_dday": 3})"""
+    from .ssl_cert import notify_ssl_cert_expiry as notify
+    return notify(params)
+
 # ---- Role/Permission Sync ----
 
 # 메뉴 카테고리 → role 매핑. Was/Web은 mw_rgroup으로 통합.

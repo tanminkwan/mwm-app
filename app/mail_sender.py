@@ -131,7 +131,7 @@ def get_emails_from_tags(tag_names, manual_emails, db_session, ut_tag_model):
         for tag_name in tag_names:
             tag = db_session.query(ut_tag_model).filter_by(tag=tag_name).first()
             if tag and tag.value1:
-                emails.extend(tag.value1.split(','))
+                emails.extend(e.strip() for e in tag.value1.split(','))
     if manual_emails:
         emails.extend([e.strip() for e in manual_emails.split(',')])
     

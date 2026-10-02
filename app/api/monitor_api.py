@@ -6,6 +6,7 @@ from app.sqls.monitor import (
     get_ica_cert_expiry_stat,
     get_ica_cert_expiry_stat_jeus
 )
+from app.sqls.ssl_cert import get_ssl_cert_apply
 
 class MonitorRestApi(BaseApi):
     resource_name = 'monitor'
@@ -35,6 +36,15 @@ class MonitorRestApi(BaseApi):
     def get_ica_cert_expiry_stat_jeus(self):
         result = get_ica_cert_expiry_stat_jeus()
         return self.response(200, ica_cert_expiry_stat_jeus=result)
+
+    # ------------------ SSL 인증서 파일 적용 현황 (HOWTO_021) ------------------
+    @expose('/ssl_cert_apply/<int:cert_id>', methods=['GET'])
+    @protect(allow_browser_login=True)
+    def get_ssl_cert_apply(self, cert_id):
+        result = get_ssl_cert_apply(cert_id)
+        if result is None:
+            return self.response_404()
+        return self.response(200, **result)
 
 # API 등록
 appbuilder.add_api(MonitorRestApi)

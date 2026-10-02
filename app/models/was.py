@@ -13,7 +13,7 @@ from flask_appbuilder.models.decorators import renders
 from flask_appbuilder.filemanager import get_file_original_name
 from .common import get_user, EncodingEnum, WarEnum, WebconnEnum, BuiltEnum\
     , ApmEnum, SvrTypeEnum, RunEnum, YnEnum, LocationEnum, OSEnum, RuningTypeEnum\
-    , getColoredText, isNotNull, getJsonButton, getDiagramButton
+    , getColoredText, isNotNull, getJsonButton, getDiagramButton, SslCertTypeEnum
 
 assoc_dbmaster_appmaster = Table('mw_dbmaster_appmaster', Model.metadata,
                                   Column('id', Integer, primary_key=True),
@@ -1279,6 +1279,37 @@ class MwEtcSslDomain(Model):
 
     def __repr__(self):
         return self.domain_name + ':' + self.port
+
+
+class MwSslCertFile(Model):
+    __tablename__ = "mw_ssl_cert_file"
+    t__table_comment = {"comment": "SSL 인증서 파일 (HOWTO_021)"}
+
+    id = Column(Integer, primary_key=True, nullable=False, comment='Primary Key')
+    cert_name = Column(String(30), unique=True, nullable=False, comment='이름 (UTF-8 30byte 이내)')
+    ag_file_id = Column(Integer, ForeignKey('ag_file.id', ondelete='SET NULL'), comment='원본 파일')
+    file_name = Column(String(50), nullable=False, comment='등록 시점의 파일 이름')
+    received_date = Column(Date(), nullable=False, comment='접수일')
+    receiver_name = Column(String(50), nullable=False, comment='접수자 이름')
+    cert_type = Column(Enum(SslCertTypeEnum), info={'enum_class': SslCertTypeEnum}, nullable=False, comment='Leaf/중간 CA')
+    subject = Column(String(300), comment='주제')
+    cn = Column(String(200), comment='CN')
+    serial = Column(String(100), comment='일련번호')
+    issuer = Column(String(300), comment='발급자')
+    notbefore = Column(DateTime(), comment='유효기간시작')
+    notafter = Column(DateTime(), comment='유효기간만료')
+    user_id = Column(String(50), default=get_user, nullable=False)
+    create_on = Column(DateTime(), default=datetime.now, nullable=False)
+
+    __table_args__ = (
+        t__table_comment,
+    )
+
+    ag_file = relationship('AgFile')
+
+    def __repr__(self):
+        return self.cert_name
+
 
 class MwServer(Model):
     __tablename__ = "mw_server"

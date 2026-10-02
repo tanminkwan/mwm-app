@@ -557,23 +557,31 @@ class UtApi(BaseApi):
         if not emails:
             return jsonify(error='발송 대상 이메일이 없습니다.'), 400
 
-        files = get_attachments_from_s3(row.ut_file, S3FileManager)
-
-        kroki_url = con_val.get('KROKI_URL', 'http://mwm-kroki:8000').rstrip('/')
-        inlined_html, inline_images = convert_md_to_html(row.content_md, kroki_url)
-
         try:
-            send_mail(con_val['SMTP_HOST'], con_val['SMTP_PORT']
-                    , con_val.get('SMTP_SENDER', ''), g.user.username
-                    , emails, row.content_name, inlined_html
-                    , files=files
-                    , use_tls=con_val.get('SMTP_USE_TLS', False)
-                    , username=con_val.get('SMTP_USERNAME')
-                    , password=con_val.get('SMTP_PASSWORD')
-                    , inline_images=inline_images)
+            send_md_content_email(row, emails, g.user.username)
             return jsonify(success=True, message=f'{len(emails)}명에게 발송 완료', emails=emails)
         except Exception:
             return internal_error('Email send failed', key='error')
+
+
+def send_md_content_email(row, emails, sender_name):
+    """Markdown 지식(UtMdContent) 한 건을 HTML 로 바꿔 메일로 보낸다. 첨부파일·Mermaid 그림 포함.
+
+    화면의 [메일 발송]과 [서버내부기능](notify_ssl_cert_expiry)이 같이 쓴다. send_mail 의 (성공 여부, 메시지)를 돌려준다.
+    """
+    files = get_attachments_from_s3(row.ut_file, S3FileManager)
+
+    kroki_url = con_val.get('KROKI_URL', 'http://mwm-kroki:8000').rstrip('/')
+    inlined_html, inline_images = convert_md_to_html(row.content_md, kroki_url)
+
+    return send_mail(con_val['SMTP_HOST'], con_val['SMTP_PORT']
+                     , con_val.get('SMTP_SENDER', ''), sender_name
+                     , emails, row.content_name, inlined_html
+                     , files=files
+                     , use_tls=con_val.get('SMTP_USE_TLS', False)
+                     , username=con_val.get('SMTP_USERNAME')
+                     , password=con_val.get('SMTP_PASSWORD')
+                     , inline_images=inline_images)
 
 #appbuilder.add_separator("Server")
 appbuilder.add_separator("Server")

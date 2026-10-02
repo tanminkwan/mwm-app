@@ -316,3 +316,6 @@ class AgFile(Model):
 
     def get_filename(self):
         return get_file_original_name(str(self.file))
+
+    def __repr__(self):
+        return f'{self.file_name} ({self.file_version})'

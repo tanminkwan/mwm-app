@@ -1,0 +1,79 @@
+{% extends "appbuilder/base.html" %}
+{% block content %}
+<style>
+    #ssl-apply .summary { font-size: 16px; margin: 12px 0; }
+    #ssl-apply td.st-미적용 { color: #c0392b; font-weight: 700; }
+    #ssl-apply td.st-미확인 { color: #808080; }
+    #ssl-apply td.st-적용 { color: #2e8b57; }
+</style>
+
+<div id="ssl-apply" class="container-fluid">
+    <h3>SSL 인증서 적용 현황</h3>
+
+    <div class="form-inline">
+        <select id="cert-select" class="form-control" style="min-width: 520px;">
+            <option value="">인증서 선택</option>
+            {% for c in certs %}
+            <option value="{{ c.id }}" {% if c.id == selected %}selected{% endif %}>
+                {{ c.cert_name }} ({{ c.cert_type.name }}{% if c.cn %}, CN={{ c.cn }}{% endif %}, ~{{ c.notafter }})
+            </option>
+            {% endfor %}
+        </select>
+        <a class="btn btn-default" href="{{ url_for('SslCertFileModelView.list') }}">SSL 인증서 파일</a>
+    </div>
+
+    <div id="ssl-apply-summary" class="summary"></div>
+    <p class="text-muted" id="ssl-apply-rule"></p>
+
+    <table class="table table-condensed table-hover" id="ssl-apply-table" style="display:none;">
+        <thead>
+            <tr><th>구분</th><th>Landscape</th><th>Host</th><th>Domain:Port</th>
+                <th>현재 Subject</th><th>현재 만료일</th><th>적용여부</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+{# jQuery 는 FAB 기본 레이아웃이 싣는다. 값은 .text() 로만 넣는다 — subject 는 Agent 수집값이다 #}
+<script>
+$(function () {
+    var API = "{{ '/api/v1/monitor/ssl_cert_apply/' }}";
+
+    function cell(text, cls) {
+        return $('<td>').addClass(cls || '').text(text == null ? '-' : text);
+    }
+
+    function load(certId) {
+        var $table = $('#ssl-apply-table'), $tbody = $table.find('tbody').empty();
+        $('#ssl-apply-summary').empty();
+        $('#ssl-apply-rule').empty();
+        if (!certId) { $table.hide(); return; }
+
+        $.ajax({url: API + certId}).done(function (data) {
+            var s = data.summary;
+            $('#ssl-apply-summary').text('적용 ' + s.applied + ' · 미적용 ' + s.not_applied +
+                ' · 미확인 ' + s.unknown + ' / 대상 ' + s.target);
+            $('#ssl-apply-rule').text(data.cert.cert_type === 'LEAF'
+                ? '대상: 현재 leaf CN = ' + data.cert.cn + ' · 적용여부: 현재 만료일 = ' + data.cert.notafter
+                : '대상: 전체 (중간 CA) · 적용여부: 현재 CA 만료일 = ' + data.cert.notafter);
+            data.rows.forEach(function (r) {
+                $tbody.append($('<tr>').append(
+                    cell(r.source), cell(r.landscape), cell(r.host_id), cell(r.domain),
+                    cell(r.subject), cell(r.notafter), cell(r.status, 'st-' + r.status)));
+            });
+            $table.show();
+        }).fail(function () {
+            $('#ssl-apply-summary').text('조회하지 못했습니다.');
+            $table.hide();
+        });
+    }
+
+    $('#cert-select').on('change', function () {
+        var id = $(this).val();
+        history.replaceState(null, '', id ? '?cert_id=' + id : '?');
+        load(id);
+    });
+    load($('#cert-select').val());
+});
+</script>
+{% endblock %}

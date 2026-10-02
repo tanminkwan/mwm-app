@@ -131,7 +131,7 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor.close()
 """
 from . import models
-from app.views import was, agent, monitor, knowledge, itam
+from app.views import was, agent, monitor, knowledge, itam, ssl_cert
 from app.views.common import TokenView
 from app.sqls import was, agent, monitor, knowledge, batch, server, itam_compare
 from app.api import was_api, agent_api, common_api, model_api, grid_api, batch_api, itam_compare_api, monitor_api, knowledge_api

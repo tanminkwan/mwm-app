@@ -49,6 +49,7 @@
 - **[테스트 작성 가이드](docs/HOWTO_018_writing_tests.md)**: 실행 방법, 특성화 테스트 패턴, 밟았던 함정, CI 관문.
 - **[SBOM·third-party 라이선스](docs/HOWTO_020_sbom_and_licenses.md)**: `sbom/*.cdx.json`(CycloneDX)·[`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md) 생성, 라이선스 검토, vendored JS 취약점.
 - **[Agent MQTT 수신 상태](docs/HOWTO_019_agent_mqtt_status.md)**: `X-Mqtt-Status` 헤더 계약, MQTT 대상 모수, 대시보드·Agent 목록, 운영 ALTER SQL.
+- **[SSL 인증서 파일·적용 현황](docs/HOWTO_021_ssl_cert_file.md)**: 인증서 파일 등록(서버 추출, leaf/중간 CA), CN·만료일 기준 적용 현황, 운영 SQL.
 - **[Email API 연동 가이드 (초보용)](docs/HOWTO_010_email_api_guide.md)**: 토큰 발급부터 Python 연동 샘플까지 포함.
 - **[비상 대응 가이드 (Emergency Response)](docs/emergency_response.md)**: DB 세션 정리 및 컨테이너 복구 절차.
 - **[OAuth2 & OIDC 연동 가이드](idp/README.md)**: IDP 서버 구성 및 SSO 설정.

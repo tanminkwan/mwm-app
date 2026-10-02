@@ -153,7 +153,7 @@ class AgentModelView(ModelView):
     
     datamodel = SQLAInterface(AgAgent)
     list_title    = "Agent 현황"
-    list_columns  = ['agent_id', 'agent_type', 'agent_version', 'agent_name', 'agent_sub_type','c_last_checked',
+    list_columns  = ['agent_id', 'agent_version', 'agent_name', 'agent_sub_type','c_last_checked',
                      'c_mqtt_status']
     label_columns = {'c_mqtt_status': 'MQTT'}
     list_template = 'listWithJson.html'

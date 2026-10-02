@@ -87,6 +87,12 @@ class AgentTypeEnum(enum.Enum):
     WHEREAMI  = 'WhereAmI'
     SHIFTSIS  = 'Shift Sisters'
 
+
+class SslCertTypeEnum(enum.Enum):
+    LEAF = 'Leaf'
+    CA = '중간 CA'
+
+
 class AgentSubTypeEnum(enum.Enum):
     WIN_JEUS8  = 'WINDOWS & JEUS8'
     WIN_JEUS7  = 'WINDOWS & JEUS7'
