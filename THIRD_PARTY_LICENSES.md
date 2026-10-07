@@ -1,6 +1,6 @@
 # Third-party licenses
 
-`sbom/build.py` 가 만든다 — 손으로 고치지 않는다 (HOWTO_020). 앱 버전 `20260930.015`.
+`sbom/build.py` 가 만든다 — 손으로 고치지 않는다 (HOWTO_020). 앱 버전 `20261001.004`.
 기계가 읽는 목록(CycloneDX 1.6 SBOM)은 `sbom/mwm-app.cdx.json`·`sbom/mwm-idp.cdx.json` 이다.
 
 이 프로젝트 자체는 [MIT](LICENSE) 다. 아래는 함께 설치·배포되는 외부 구성요소다.
@@ -31,7 +31,7 @@ GPL·LGPL·상용·미확인 라이선스. "A OR B" 처럼 허용 라이선스�
 | blinker | 1.9.0 | MIT |
 | boto3 | 1.43.102 | Apache-2.0 |
 | botocore | 1.43.102 | Apache-2.0 |
-| cachetools | 7.2.0 | MIT |
+| cachetools | 7.2.1 | MIT |
 | certifi | 2026.7.22 | MPL-2.0 AND Mozilla Public License 2.0 (MPL 2.0) |
 | cffi | 2.1.1 | MIT-0 |
 | chardet | 7.6.0 | 0BSD |
@@ -110,7 +110,7 @@ GPL·LGPL·상용·미확인 라이선스. "A OR B" 처럼 허용 라이선스�
 | tzdata | 2024.1 | Apache-2.0 AND Apache Software License |
 | tzlocal | 5.4.4 | MIT |
 | urllib3 | 2.8.0 | MIT |
-| Werkzeug | 3.1.8 | BSD-3-Clause |
+| Werkzeug | 3.1.9 | BSD-3-Clause |
 | wheel | 0.48.0 | MIT |
 | wrapt | 1.16.0 | BSD License |
 | WTForms | 3.2.2 | BSD License |
@@ -136,7 +136,7 @@ GPL·LGPL·상용·미확인 라이선스. "A OR B" 처럼 허용 라이선스�
 | itsdangerous | 2.2.0 | BSD License |
 | Jinja2 | 3.1.6 | BSD License |
 | joserfc | 1.7.5 | BSD-3-Clause AND BSD License |
-| MarkupSafe | 3.0.3 | BSD-3-Clause |
+| MarkupSafe | 3.0.4 | BSD-3-Clause |
 | packaging | 26.3 | Apache-2.0 OR BSD-2-Clause |
 | pip | 26.2.1 | MIT |
 | psycopg2-binary | 2.9.13 | GNU Library or Lesser General Public License (LGPL) |
@@ -145,7 +145,7 @@ GPL·LGPL·상용·미확인 라이선스. "A OR B" 처럼 허용 라이선스�
 | python-dotenv | 1.2.3 | BSD-3-Clause |
 | setuptools | 84.0.0 | MIT |
 | SQLAlchemy | 1.4.54 | MIT |
-| Werkzeug | 3.1.8 | BSD-3-Clause |
+| Werkzeug | 3.1.9 | BSD-3-Clause |
 | wheel | 0.48.0 | MIT |
 | WTForms | 3.2.2 | BSD License |
 

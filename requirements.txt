@@ -75,7 +75,7 @@ typing_extensions==4.16.0
 tzdata==2024.1
 tzlocal==5.4.4
 urllib3==2.8.0
-Werkzeug==3.1.8
+Werkzeug==3.1.9
 wrapt==1.16.0
 WTForms==3.2.2
 XlsxWriter==3.2.9
