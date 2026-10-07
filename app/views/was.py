@@ -693,10 +693,13 @@ class WebDomainModelView(ModelView):
                 if not agent_rec:
                     continue
 
-                # Real IP 추출
-                real_ip = ""
-                if item.mw_web_vhost and item.mw_web_vhost.mw_web and item.mw_web_vhost.mw_web.mw_server:
-                    real_ip = item.mw_web_vhost.mw_web.mw_server.ip_address
+                # Real IP 추출. 없으면 빈 IP 를 보내지 않고 건너뜀
+                web = item.mw_web_vhost.mw_web if item.mw_web_vhost else None
+                server = web.mw_server if web else None
+                real_ip = server.ip_address if server else None
+                if not real_ip:
+                    flash(f"{item.domain_name}:{item.port} - 서버 IP 주소를 찾을 수 없습니다.", 'warning')
+                    continue
 
                 create_connect_ssl_real_ip(agent_rec.agent_id, item.domain_name, item.port, real_ip)
 
@@ -976,10 +979,11 @@ class EtcSslDomainCommonView(ModelView):
             if not agent_rec:
                 continue
 
-            # Real IP 추출
-            real_ip = ""
-            if item.mw_server:
-                real_ip = item.mw_server.ip_address
+            # Real IP 추출. 없으면 빈 IP 를 보내지 않고 건너뜀
+            real_ip = item.mw_server.ip_address if item.mw_server else None
+            if not real_ip:
+                flash(f"{item.domain_name}:{item.port} - 서버 IP 주소를 찾을 수 없습니다.", 'warning')
+                continue
 
             create_connect_ssl_real_ip(agent_rec.agent_id, item.domain_name, item.port, real_ip)
 

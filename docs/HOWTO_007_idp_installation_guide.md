@@ -65,6 +65,8 @@ chmod 600 idp/certs/idp_private.pem
 | **DB** | `IDP_DATABASE_URI` | IDP 전용 DB 접속 URI | `postgresql://.../idp` |
 | **보안** | `IDP_SECRET_KEY` | Flask 세션 및 CSRF 보안용 비밀키 | 복잡한 문자열 권장 |
 | | `IDP_PASSWORD_MIN_LENGTH` | 사용자 암호 최소 길이 (기본: 8) | |
+| | `IDP_LOGIN_MAX_ATTEMPTS` | 연속 로그인 실패 허용 횟수. 넘으면 계정 잠금 (기본: 5, 0 이하면 끔) | |
+| | `IDP_LOGIN_LOCK_MINUTES` | 잠금 시간(분) (기본: 15) | 시간이 지나면 자동 해제 |
 | **OAuth2** | `OAUTH2_TOKEN_EXPIRES_IN` | Access Token 유효 기간 (초) | 기본: 3600 (1시간) |
 | | `OAUTH2_REFRESH_TOKEN_EXPIRES_IN` | Refresh Token 유효 기간 (초) | 기본: 86400 (24시간) |
 | **OIDC** | `OIDC_ISSUER` | 토큰 내 발행자 식별 URL | 브라우저 접근 주소와 일치 필수 |

@@ -73,8 +73,7 @@ def login():
 
     return render_template(
         "login.html",
-        app_title=current_app.config.get("APP_TITLE", "MWM IDP"),
-        action_url=url_for("auth.login", next=request.args.get("next"))
+        app_title=current_app.config["APP_TITLE"],
     )
 
 

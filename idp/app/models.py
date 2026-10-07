@@ -29,6 +29,8 @@ class IdpUser(db.Model, UserMixin):
     first_name = Column(String(64), nullable=False, default="")
     last_name = Column(String(64), nullable=False, default="")
     active = Column(Boolean, default=True, nullable=False)
+    failed_login_count = Column(Integer, default=0, nullable=False)  # 연속 로그인 실패 횟수
+    locked_until = Column(DateTime, nullable=True)  # 이 시각(UTC)까지 로그인 잠금
     roles = Column(JSON, default=list)
     sync_source = Column(String(50), nullable=True)
     sync_id = Column(String(100), nullable=True)

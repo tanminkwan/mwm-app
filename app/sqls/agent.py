@@ -236,6 +236,12 @@ def create_connect_ssl_real_ip_for_httplistener(item):
     matched_agents.sort(key=lambda x: x.agent_id)
     selected_agent_id = matched_agents[0].agent_id
 
+    # Real IP 추출 (mw_was_instance -> mw_server -> ip_address). 없으면 빈 IP 를 보내지 않고 중단
+    server = item.mw_was_instance.mw_server
+    real_ip = server.ip_address if server else None
+    if not real_ip:
+        return False, f"서버({host_id})의 IP 주소를 찾을 수 없습니다. ({item.domain_name}:{item.listen_port})"
+
     # `mw_etc_ssl_domain` 정보 확인 / 생성 (기존 로직 유지)
     etc_domain = db.session.query(MwEtcSslDomain).filter_by(
         host_id=host_id,
@@ -257,11 +263,6 @@ def create_connect_ssl_real_ip_for_httplistener(item):
     # Association
     if etc_domain not in item.mw_etc_ssl_domain:
         item.mw_etc_ssl_domain.append(etc_domain)
-
-    # Real IP 추출 (mw_was_instance -> mw_server -> ip_address)
-    real_ip = ""
-    if item.mw_was_instance and item.mw_was_instance.mw_server:
-        real_ip = item.mw_was_instance.mw_server.ip_address
 
     return create_connect_ssl_real_ip(selected_agent_id, item.domain_name, item.listen_port, real_ip)
 

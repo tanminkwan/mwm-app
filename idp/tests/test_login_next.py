@@ -46,3 +46,11 @@ def test_a_protected_page_returns_after_login(client, db, sample_user):
     back = client.post(login_url, data={"username": "testuser", "password": "TestPass123!"})
     assert back.status_code == 302
     assert back.headers["Location"] == "/clients"
+
+
+def test_the_login_form_does_not_echo_next(client, db):
+    # 요청의 next 를 폼 action 으로 되돌려 주지 않는다 (CodeQL py/reflective-xss) — 폼은 /login 으로만 보낸다
+    page = client.get("/login", query_string={"next": '"><script>alert(1)</script>'})
+    assert page.status_code == 200
+    assert b"alert(1)" not in page.data
+    assert b'action="/login"' in page.data

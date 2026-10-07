@@ -366,3 +366,33 @@ GRANT ALL PRIVILEGES ON TABLE ut_kmgroup_htmlcontent TO mwm;
 GRANT ALL PRIVILEGES ON TABLE ut_kmgroup_mdcontent TO mwm;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO mwm;
 ```
+
+---
+
+## 11. IDP DB (`idp`) 컬럼 추가 SQL
+
+> 2026-10-07 추가. IDP(`mwm-idp`)는 Alembic 을 쓰지 않는다 — 기동 시 `db.create_all()` 이 **없는 테이블만** 만들고
+> 기존 테이블의 컬럼은 추가하지 않는다. 그래서 컬럼이 늘면 아래 SQL 을 **새 이미지보다 먼저** 적용한다.
+> 대상 DB 는 `mw` 가 아니라 **`idp`** 이다 (`-d idp`).
+
+### 11-1. 로그인 잠금 (`idp_user`)
+
+연속 로그인 실패 횟수와 잠금 해제 시각. 기본 5회 실패 → 15분 잠금 (`IDP_LOGIN_MAX_ATTEMPTS`, `IDP_LOGIN_LOCK_MINUTES`).
+
+```sql
+ALTER TABLE idp_user
+    ADD COLUMN IF NOT EXISTS failed_login_count INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS locked_until       TIMESTAMP WITHOUT TIME ZONE;
+```
+
+- 적용·되돌리기 파일: `docs/sql/20261007_add_idp_login_lockout.sql`, `docs/sql/20261007_add_idp_login_lockout_rollback.sql` (확인 쿼리와 순서 설명 포함)
+- 순서: **SQL 먼저 → 새 mwm-idp.** 구 앱은 새 컬럼을 몰라도 동작하지만, 새 앱을 SQL 없이 띄우면 `idp_user` 조회가 모두 실패해 로그인이 막힌다.
+- 적용 (호스트에서):
+  ```bash
+  docker exec -i mwm-db psql -U <DB 사용자> -d idp \
+      -v ON_ERROR_STOP=1 -f /dev/stdin < docs/sql/20261007_add_idp_login_lockout.sql
+  ```
+- 잠긴 계정을 바로 풀기:
+  ```sql
+  UPDATE idp_user SET locked_until = NULL, failed_login_count = 0 WHERE username = '<계정>';
+  ```

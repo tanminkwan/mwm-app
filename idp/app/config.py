@@ -29,6 +29,9 @@ class Config:
     PREFERRED_URL_SCHEME = 'https'
     PASSWORD_HASH_METHOD = "bcrypt"
     PASSWORD_MIN_LENGTH = int(os.getenv("IDP_PASSWORD_MIN_LENGTH", "8"))
+    # 로그인 연속 실패 N회면 M분 잠금 (brute force 방어). N <= 0 이면 잠금 끔
+    LOGIN_MAX_ATTEMPTS = int(os.getenv("IDP_LOGIN_MAX_ATTEMPTS", "5"))
+    LOGIN_LOCK_MINUTES = int(os.getenv("IDP_LOGIN_LOCK_MINUTES", "15"))
 
     # ── OAuth2 ──
     OAUTH2_TOKEN_EXPIRES_IN = int(os.getenv("OAUTH2_TOKEN_EXPIRES_IN", "3600"))

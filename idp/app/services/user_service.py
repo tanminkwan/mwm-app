@@ -1,8 +1,10 @@
 """사용자 비즈니스 로직. SOLID-SRP: 사용자 관련 검증/변환/정책만 담당."""
 import logging
+from datetime import timedelta
 
 from flask import current_app
 from app.log_safe import log_safe
+from app.models import _utcnow
 
 logger = logging.getLogger(__name__)
 
@@ -92,9 +94,33 @@ class UserService:
         return user
 
     def authenticate(self, username, password):
+        """아이디/암호 확인. 연속 실패가 LOGIN_MAX_ATTEMPTS 에 이르면 LOGIN_LOCK_MINUTES 분 잠근다.
+
+        잠금·없는 계정·틀린 암호 모두 None 만 돌려준다 — 호출 쪽 메시지가 같아 계정 존재 여부가 새지 않는다.
+        """
         user = self.user_repo.get_by_username(username)
         if not user or not user.active:
             return None
-        if not user.check_password(password):
+
+        now = _utcnow()
+        if user.locked_until and user.locked_until > now:
+            logger.warning(f"Login blocked (locked): {log_safe(username)}")
             return None
-        return user
+
+        if user.check_password(password):
+            if user.failed_login_count or user.locked_until:
+                user.failed_login_count = 0
+                user.locked_until = None
+                self.user_repo.commit()
+            return user
+
+        max_attempts = current_app.config.get("LOGIN_MAX_ATTEMPTS", 5)
+        if max_attempts > 0:
+            user.failed_login_count = (user.failed_login_count or 0) + 1
+            if user.failed_login_count >= max_attempts:
+                minutes = current_app.config.get("LOGIN_LOCK_MINUTES", 15)
+                user.locked_until = now + timedelta(minutes=minutes)
+                user.failed_login_count = 0
+                logger.warning(f"Login locked for {minutes} min: {log_safe(username)}")
+            self.user_repo.commit()
+        return None
